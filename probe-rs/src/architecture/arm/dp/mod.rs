@@ -95,6 +95,7 @@ pub trait DpRegister: Register {
     const VERSION: DebugPortVersion;
 }
 
+define_dp_register!(Abort, DPv1, 0x0, "ABORT");
 bitfield! {
     /// ABORT, Abort register (see ADI v5.2 B2.2.1)
     #[derive(Clone, Default)]
@@ -112,29 +113,7 @@ bitfield! {
     pub _, set_dapabort: 0;
 }
 
-impl TryFrom<u32> for Abort {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Abort(raw))
-    }
-}
-
-impl From<Abort> for u32 {
-    fn from(raw: Abort) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for Abort {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
-}
-
-impl Register for Abort {
-    const ADDRESS: u16 = 0x0;
-    const NAME: &'static str = "ABORT";
-}
-
+define_dp_register!(Ctrl, DPv1, 0x04, "CTRL/STAT");
 bitfield! {
     /// CTRL/STAT, Control/Status register (see ADI v5.2 B2.2.2)
     #[derive(Clone, Default)]
@@ -292,29 +271,7 @@ bitfield! {
     pub orun_detect, set_orun_detect: 0;
 }
 
-impl TryFrom<u32> for Ctrl {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Ctrl(raw))
-    }
-}
-
-impl From<Ctrl> for u32 {
-    fn from(raw: Ctrl) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for Ctrl {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
-}
-
-impl Register for Ctrl {
-    const ADDRESS: u16 = 0x04;
-    const NAME: &'static str = "CTRL/STAT";
-}
-
+define_dp_register!(Select, DPv1, 0x8, "SELECT");
 bitfield! {
     /// SELECT, AP Select register (see ADI v5.2 B2.2.9)
     #[derive(Clone)]
@@ -350,29 +307,7 @@ bitfield! {
     pub u8, dp_bank_sel, set_dp_bank_sel: 3, 0;
 }
 
-impl TryFrom<u32> for Select {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Select(raw))
-    }
-}
-
-impl From<Select> for u32 {
-    fn from(raw: Select) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for Select {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
-}
-
-impl Register for Select {
-    const ADDRESS: u16 = 0x8;
-    const NAME: &'static str = "SELECT";
-}
-
+define_dp_register!(DPIDR, DPv1, 0x0, "DPIDR");
 bitfield! {
     /// DPIDR, Debug Port Identification register (see ADI v5.2 B2.2.5)
     ///
@@ -416,29 +351,7 @@ bitfield! {
     pub u8, jep_id, _: 7, 1;
 }
 
-impl TryFrom<u32> for DPIDR {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<DPIDR> for u32 {
-    fn from(raw: DPIDR) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for DPIDR {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
-}
-
-impl Register for DPIDR {
-    const ADDRESS: u16 = 0x0;
-    const NAME: &'static str = "DPIDR";
-}
-
+define_dp_register!(DPIDR1, DPv3, 0x10, "DPIDR1");
 bitfield! {
     /// DPIDR1, Debug Port Identification register (see ADI v6 B2.2.7)
     ///
@@ -456,29 +369,8 @@ bitfield! {
     /// Possible values are 12, 20, 32, 40, 48 and 52 bits.
     pub u8, asize, _: 6, 0;
 }
-impl TryFrom<u32> for DPIDR1 {
-    type Error = RegisterParseError;
 
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<DPIDR1> for u32 {
-    fn from(raw: DPIDR1) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for DPIDR1 {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv3;
-}
-
-impl Register for DPIDR1 {
-    const ADDRESS: u16 = 0x10;
-    const NAME: &'static str = "DPIDR1";
-}
-
+define_dp_register!(TARGETID, DPv2, 0x24, "TARGETID");
 bitfield! {
     /// TARGETID, Target Identification register (see ADI v5.2 B2.2.10)
     ///
@@ -510,29 +402,7 @@ bitfield! {
     pub u16, tdesigner, _: 11, 1;
 }
 
-impl TryFrom<u32> for TARGETID {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<TARGETID> for u32 {
-    fn from(raw: TARGETID) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for TARGETID {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv2;
-}
-
-impl Register for TARGETID {
-    const ADDRESS: u16 = 0x24;
-    const NAME: &'static str = "TARGETID";
-}
-
+define_dp_register!(BASEPTR0, DPv3, 0x20, "BASEPTR0");
 bitfield! {
     /// BASEPTR0, Initiale system address for the first component in the system (see ADI v6.0 B2.2.2)
     #[derive(Clone)]
@@ -544,29 +414,7 @@ bitfield! {
     pub valid, _: 0;
 }
 
-impl TryFrom<u32> for BASEPTR0 {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<BASEPTR0> for u32 {
-    fn from(raw: BASEPTR0) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for BASEPTR0 {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv3;
-}
-
-impl Register for BASEPTR0 {
-    const ADDRESS: u16 = 0x20;
-    const NAME: &'static str = "BASEPTR0";
-}
-
+define_dp_register!(BASEPTR1, DPv3, 0x30, "BASEPTR1");
 bitfield! {
     /// BASEPTR1, Initiale system address for the first component in the system (see ADI v6.0 B2.2.2)
     #[derive(Clone)]
@@ -574,29 +422,6 @@ bitfield! {
     impl Debug;
     /// Pointer most significant bits (bits [63:32] of the full address).
     pub u32, ptr, _: 31, 0;
-}
-
-impl TryFrom<u32> for BASEPTR1 {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<BASEPTR1> for u32 {
-    fn from(raw: BASEPTR1) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for BASEPTR1 {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv3;
-}
-
-impl Register for BASEPTR1 {
-    const ADDRESS: u16 = 0x30;
-    const NAME: &'static str = "BASEPTR1";
 }
 
 /// The ID of a debug port. Can be used to detect and select devices in a multidrop setup.
@@ -645,30 +470,7 @@ impl From<DPIDR> for DebugPortId {
 /// The second access to either the AP or the DP stalls until the result of the original AP read is available.
 #[derive(Debug, Clone)]
 pub struct RdBuff(pub u32);
-
-impl TryFrom<u32> for RdBuff {
-    type Error = RegisterParseError;
-
-    fn try_from(val: u32) -> Result<Self, Self::Error> {
-        Ok(RdBuff(val))
-    }
-}
-
-impl From<RdBuff> for u32 {
-    fn from(register: RdBuff) -> Self {
-        let RdBuff(val) = register;
-        val
-    }
-}
-
-impl DpRegister for RdBuff {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
-}
-
-impl Register for RdBuff {
-    const ADDRESS: u16 = 0xc;
-    const NAME: &'static str = "RDBUFF";
-}
+define_dp_register!(RdBuff, DPv1, 0xC, "RDBUFF");
 
 /// Specifies if pushed-find operations are implemented or not.
 #[derive(Debug, PartialEq, Eq)]
