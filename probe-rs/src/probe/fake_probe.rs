@@ -26,10 +26,10 @@ pub struct FakeProbe {
     speed: u32,
     scan_chain: Option<Vec<ScanChainElement>>,
 
-    dap_register_read_handler: Option<Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>>,
+    dap_register_read_handler: Option<Box<dyn Fn(PortType, u16) -> Result<u32, ArmError> + Send>>,
 
     dap_register_write_handler:
-        Option<Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>>,
+        Option<Box<dyn Fn(PortType, u16, u32) -> Result<(), ArmError> + Send>>,
 
     operations: RefCell<VecDeque<Operation>>,
 
@@ -193,7 +193,7 @@ impl ArmProbe for &mut MockCore {
 pub enum Operation {
     ReadRawApRegister {
         ap: ApAddress,
-        address: u8,
+        address: u16,
         result: u32,
     },
 }
@@ -244,7 +244,7 @@ impl FakeProbe {
     /// Can be used to hook into the read.
     pub fn set_dap_register_read_handler(
         &mut self,
-        handler: Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>,
+        handler: Box<dyn Fn(PortType, u16) -> Result<u32, ArmError> + Send>,
     ) {
         self.dap_register_read_handler = Some(handler);
     }
@@ -253,7 +253,7 @@ impl FakeProbe {
     /// Can be used to hook into the write.
     pub fn set_dap_register_write_handler(
         &mut self,
-        handler: Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>,
+        handler: Box<dyn Fn(PortType, u16, u32) -> Result<(), ArmError> + Send>,
     ) {
         self.dap_register_write_handler = Some(handler);
     }
@@ -270,7 +270,7 @@ impl FakeProbe {
     fn read_raw_ap_register(
         &mut self,
         expected_ap: ApAddress,
-        expected_address: u8,
+        expected_address: u16,
     ) -> Result<u32, ArmError> {
         let operation = self.next_operation();
 
@@ -372,14 +372,19 @@ impl DebugProbe for FakeProbe {
 
 impl RawDapAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
+    fn raw_read_register(&mut self, port: PortType, addr: u16) -> Result<u32, ArmError> {
         let handler = self.dap_register_read_handler.as_ref().unwrap();
 
         handler(port, addr)
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn raw_write_register(&mut self, port: PortType, addr: u8, value: u32) -> Result<(), ArmError> {
+    fn raw_write_register(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        value: u32,
+    ) -> Result<(), ArmError> {
         let handler = self.dap_register_write_handler.as_ref().unwrap();
 
         handler(port, addr, value)
@@ -540,27 +545,27 @@ impl SwoAccess for FakeArmInterface<Initialized> {
 }
 
 impl DapAccess for FakeArmInterface<Initialized> {
-    fn read_raw_dp_register(&mut self, _dp: DpAddress, _address: u8) -> Result<u32, ArmError> {
+    fn read_raw_dp_register(&mut self, _dp: DpAddress, _address: u16) -> Result<u32, ArmError> {
         todo!()
     }
 
     fn write_raw_dp_register(
         &mut self,
         _dp: DpAddress,
-        _address: u8,
+        _address: u16,
         _value: u32,
     ) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn read_raw_ap_register(&mut self, _ap: ApAddress, _address: u8) -> Result<u32, ArmError> {
+    fn read_raw_ap_register(&mut self, _ap: ApAddress, _address: u16) -> Result<u32, ArmError> {
         self.probe.read_raw_ap_register(_ap, _address)
     }
 
     fn read_raw_ap_register_repeated(
         &mut self,
         _ap: ApAddress,
-        _address: u8,
+        _address: u16,
         _values: &mut [u32],
     ) -> Result<(), ArmError> {
         todo!()
@@ -569,7 +574,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
     fn write_raw_ap_register(
         &mut self,
         _ap: ApAddress,
-        _address: u8,
+        _address: u16,
         _value: u32,
     ) -> Result<(), ArmError> {
         todo!()
@@ -578,7 +583,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
     fn write_raw_ap_register_repeated(
         &mut self,
         _ap: ApAddress,
-        _address: u8,
+        _address: u16,
         _values: &[u32],
     ) -> Result<(), ArmError> {
         todo!()

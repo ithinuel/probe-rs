@@ -510,14 +510,14 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 struct DapTransfer {
     port: PortType,
     direction: TransferDirection,
-    address: u8,
+    address: u16,
     value: u32,
     status: TransferStatus,
     idle_cycles_after: usize,
 }
 
 impl DapTransfer {
-    fn read(port: PortType, address: u8) -> DapTransfer {
+    fn read(port: PortType, address: u16) -> DapTransfer {
         Self {
             port,
             address,
@@ -528,7 +528,7 @@ impl DapTransfer {
         }
     }
 
-    fn write(port: PortType, address: u8, value: u32) -> DapTransfer {
+    fn write(port: PortType, address: u16, value: u32) -> DapTransfer {
         Self {
             port,
             address,
@@ -661,7 +661,7 @@ enum TransferType {
     Write(u32),
 }
 
-fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> IoSequence {
+fn build_swd_transfer(port: PortType, direction: TransferType, address: u16) -> IoSequence {
     // JLink operates on raw SWD bit sequences.
     // So we need to manually assemble the read and write bitsequences.
     // The following code with the comments hopefully explains well enough how it works.
@@ -888,7 +888,7 @@ fn line_reset<P: RawProtocolIo + JTAGAccess + RawDapAccess>(this: &mut P) -> Res
 }
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
-    fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmError> {
+    fn raw_read_register(&mut self, port: PortType, address: u16) -> Result<u32, ArmError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -1005,7 +1005,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     fn raw_read_block(
         &mut self,
         port: PortType,
-        address: u8,
+        address: u16,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         let mut successful_transfers = 0;
@@ -1076,7 +1076,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     fn raw_write_register(
         &mut self,
         port: PortType,
-        address: u8,
+        address: u16,
         value: u32,
     ) -> Result<(), ArmError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
@@ -1184,7 +1184,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     fn raw_write_block(
         &mut self,
         port: PortType,
-        address: u8,
+        address: u16,
         values: &[u32],
     ) -> Result<(), ArmError> {
         let mut successful_transfers = 0;

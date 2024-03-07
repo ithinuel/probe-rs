@@ -75,7 +75,7 @@ pub trait RawDapAccess {
     /// Read a DAP register.
     ///
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError>;
+    fn raw_read_register(&mut self, port: PortType, addr: u16) -> Result<u32, ArmError>;
 
     /// Read multiple values from the same DAP register.
     ///
@@ -86,7 +86,7 @@ pub trait RawDapAccess {
     fn raw_read_block(
         &mut self,
         port: PortType,
-        addr: u8,
+        addr: u16,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         for val in values {
@@ -99,7 +99,8 @@ pub trait RawDapAccess {
     /// Write a value to a DAP register.
     ///
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
-    fn raw_write_register(&mut self, port: PortType, addr: u8, value: u32) -> Result<(), ArmError>;
+    fn raw_write_register(&mut self, port: PortType, addr: u16, value: u32)
+        -> Result<(), ArmError>;
 
     /// Write multiple values to the same DAP register.
     ///
@@ -110,7 +111,7 @@ pub trait RawDapAccess {
     fn raw_write_block(
         &mut self,
         port: PortType,
-        addr: u8,
+        addr: u16,
         values: &[u32],
     ) -> Result<(), ArmError> {
         for val in values {
@@ -183,7 +184,7 @@ pub trait DapAccess {
     /// If the device uses multiple debug ports, this will switch the active debug port if necessary.
     /// In case this happens, all queued operations will be performed, and returned errors can be from
     /// these operations as well.
-    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, ArmError>;
+    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u16) -> Result<u32, ArmError>;
 
     /// Write a Debug Port register.
     ///
@@ -196,7 +197,7 @@ pub trait DapAccess {
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
-        addr: u8,
+        addr: u16,
         value: u32,
     ) -> Result<(), ArmError>;
 
@@ -204,7 +205,7 @@ pub trait DapAccess {
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn read_raw_ap_register(&mut self, ap: ApAddress, addr: u8) -> Result<u32, ArmError>;
+    fn read_raw_ap_register(&mut self, ap: ApAddress, addr: u16) -> Result<u32, ArmError>;
 
     /// Read multiple values from the same Access Port register.
     ///
@@ -216,7 +217,7 @@ pub trait DapAccess {
     fn read_raw_ap_register_repeated(
         &mut self,
         ap: ApAddress,
-        addr: u8,
+        addr: u16,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         for val in values {
@@ -232,7 +233,7 @@ pub trait DapAccess {
     fn write_raw_ap_register(
         &mut self,
         ap: ApAddress,
-        addr: u8,
+        addr: u16,
         value: u32,
     ) -> Result<(), ArmError>;
 
@@ -246,7 +247,7 @@ pub trait DapAccess {
     fn write_raw_ap_register_repeated(
         &mut self,
         ap: ApAddress,
-        addr: u8,
+        addr: u16,
         values: &[u32],
     ) -> Result<(), ArmError> {
         for val in values {

@@ -809,7 +809,7 @@ impl<D: StLinkUsb> StLink<D> {
     }
 
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: u16, addr: u8) -> Result<u32, DebugProbeError> {
+    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, DebugProbeError> {
         if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
             tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
             return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
@@ -826,7 +826,7 @@ impl<D: StLinkUsb> StLink<D> {
             commands::JTAG_READ_DAP_REG,
             port[0],
             port[1],
-            addr,
+            addr as u8,
             0, // Maximum address for DAP registers is 0xFC
         ];
         let mut buf = [0; 8];
@@ -836,7 +836,7 @@ impl<D: StLinkUsb> StLink<D> {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: u16, addr: u8, value: u32) -> Result<(), DebugProbeError> {
+    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), DebugProbeError> {
         if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
             tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
             return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
@@ -854,7 +854,7 @@ impl<D: StLinkUsb> StLink<D> {
             commands::JTAG_WRITE_DAP_REG,
             port[0],
             port[1],
-            addr,
+            addr as u8,
             0, // Maximum address for DAP registers is 0xFC
             bytes[0],
             bytes[1],
@@ -1407,7 +1407,7 @@ impl StlinkArmDebug {
 
 impl DapAccess for StlinkArmDebug {
     #[tracing::instrument(skip(self), fields(value))]
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
+    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u16) -> Result<u32, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1424,7 +1424,7 @@ impl DapAccess for StlinkArmDebug {
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
-        address: u8,
+        address: u16,
         value: u32,
     ) -> Result<(), ArmError> {
         if dp != DpAddress::Default {
@@ -1435,7 +1435,7 @@ impl DapAccess for StlinkArmDebug {
         Ok(())
     }
 
-    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, ArmError> {
+    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u16) -> Result<u32, ArmError> {
         if ap.dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1448,7 +1448,7 @@ impl DapAccess for StlinkArmDebug {
     fn write_raw_ap_register(
         &mut self,
         ap: ApAddress,
-        address: u8,
+        address: u16,
         value: u32,
     ) -> Result<(), ArmError> {
         if ap.dp != DpAddress::Default {

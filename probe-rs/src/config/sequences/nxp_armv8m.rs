@@ -567,9 +567,9 @@ impl ArmDebugSequence for MIMXRT5xxS {
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
-        const SW_DP_ABORT: u8 = 0x0;
-        const DP_CTRL_STAT: u8 = 0x4;
-        const DP_SELECT: u8 = 0x8;
+        const SW_DP_ABORT: u16 = 0x0;
+        const DP_CTRL_STAT: u16 = 0x4;
+        const DP_SELECT: u16 = 0x8;
 
         tracing::trace!("MIMXRT5xxS debug port start");
 

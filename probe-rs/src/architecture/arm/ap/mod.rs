@@ -25,7 +25,7 @@ pub enum AccessPortError {
     #[error("Failed to read register {name} at address 0x{address:08x}")]
     RegisterRead {
         /// The address of the register.
-        address: u8,
+        address: u16,
         /// The name if the register.
         name: &'static str,
         /// The underlying root error of this access error.
@@ -36,7 +36,7 @@ pub enum AccessPortError {
     #[error("Failed to write register {name} at address 0x{address:08x}")]
     RegisterWrite {
         /// The address of the register.
-        address: u8,
+        address: u16,
         /// The name if the register.
         name: &'static str,
         /// The underlying root error of this access error.

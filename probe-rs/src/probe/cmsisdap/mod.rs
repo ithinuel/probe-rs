@@ -4,8 +4,7 @@ mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::DapProbe,
-        communication_interface::UninitializedArmProbe,
+        communication_interface::{DapProbe, UninitializedArmProbe},
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
@@ -481,10 +480,10 @@ impl CmsisDap {
                 .iter()
                 .map(|command| match *command {
                     BatchCommand::Read(port, addr) => {
-                        InnerTransferRequest::new(port, RW::R, addr as u8, None)
+                        InnerTransferRequest::new(port, RW::R, addr, None)
                     }
                     BatchCommand::Write(port, addr, data) => {
-                        InnerTransferRequest::new(port, RW::W, addr as u8, Some(data))
+                        InnerTransferRequest::new(port, RW::W, addr, Some(data))
                     }
                 })
                 .collect();
@@ -897,7 +896,7 @@ impl RawDapAccess for CmsisDap {
     }
 
     /// Reads the DAP register on the specified port and address.
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
+    fn raw_read_register(&mut self, port: PortType, addr: u16) -> Result<u32, ArmError> {
         let res = self.batch_add(BatchCommand::Read(port, addr as u16))?;
 
         // NOTE(unwrap): batch_add will always return Some if the last command is a read
@@ -906,7 +905,12 @@ impl RawDapAccess for CmsisDap {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn raw_write_register(&mut self, port: PortType, addr: u8, value: u32) -> Result<(), ArmError> {
+    fn raw_write_register(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        value: u32,
+    ) -> Result<(), ArmError> {
         self.batch_add(BatchCommand::Write(port, addr as u16, value))
             .map(|_| ())
     }
@@ -914,7 +918,7 @@ impl RawDapAccess for CmsisDap {
     fn raw_write_block(
         &mut self,
         port: PortType,
-        register_address: u8,
+        register_address: u16,
         values: &[u32],
     ) -> Result<(), ArmError> {
         self.process_batch()?;
@@ -953,7 +957,7 @@ impl RawDapAccess for CmsisDap {
     fn raw_read_block(
         &mut self,
         port: PortType,
-        register_address: u8,
+        register_address: u16,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         self.process_batch()?;

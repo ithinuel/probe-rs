@@ -23,10 +23,10 @@ pub enum ComponentError {
     NordicNoTraceMem,
 }
 
-const RESET: u8 = 0x00;
-const ERASEALL: u8 = 0x04;
-const ERASEALLSTATUS: u8 = 0x08;
-const APPROTECTSTATUS: u8 = 0x0C;
+const RESET: u16 = 0x00;
+const ERASEALL: u16 = 0x04;
+const ERASEALLSTATUS: u16 = 0x08;
+const APPROTECTSTATUS: u16 = 0x0C;
 
 /// Marker struct indicating initialization sequencing for nRF52 family parts.
 #[derive(Debug)]

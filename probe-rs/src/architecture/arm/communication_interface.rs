@@ -54,7 +54,7 @@ pub trait Register:
     Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + Debug
 {
     /// The address of the register (in bytes).
-    const ADDRESS: u8;
+    const ADDRESS: u16;
     /// The name of the register as string.
     const NAME: &'static str;
 }
@@ -548,7 +548,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     fn select_dp_and_dp_bank(
         &mut self,
         dp: DpAddress,
-        dp_register_address: u8,
+        dp_register_address: u16,
     ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(dp)?;
 
@@ -557,7 +557,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         // On ADIv5, only address 0x4 is banked, the rest are don't care.
         // On ADIv6, address 0x0 and 0x4 are banked, the rest are don't care.
 
-        let bank = dp_register_address >> 4;
+        let bank = (dp_register_address >> 4) as u8;
         let addr = dp_register_address & 0xF;
 
         if addr != 0 && addr != 4 {
@@ -584,12 +584,12 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     fn select_ap_and_ap_bank(
         &mut self,
         ap: ApAddress,
-        ap_register_address: u8,
+        ap_register_address: u16,
     ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(ap.dp)?;
 
         let port = ap.ap;
-        let ap_bank = ap_register_address >> 4;
+        let ap_bank = (ap_register_address >> 4) as u8;
 
         let mut cache_changed = if dp_state.current_apsel != port {
             dp_state.current_apsel = port;
@@ -679,7 +679,7 @@ impl SwoAccess for ArmCommunicationInterface<Initialized> {
 }
 
 impl DapAccess for ArmCommunicationInterface<Initialized> {
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
+    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u16) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
         let result = self.probe.raw_read_register(PortType::DebugPort, address)?;
         Ok(result)
@@ -688,7 +688,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
-        address: u8,
+        address: u16,
         value: u32,
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
@@ -700,7 +700,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     fn read_raw_ap_register(
         &mut self,
         ap: ApAddress,
-        address: u8,
+        address: u16,
     ) -> std::result::Result<u32, ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
@@ -714,7 +714,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     fn read_raw_ap_register_repeated(
         &mut self,
         ap: ApAddress,
-        address: u8,
+        address: u16,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
@@ -727,7 +727,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     fn write_raw_ap_register(
         &mut self,
         ap: ApAddress,
-        address: u8,
+        address: u16,
         value: u32,
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
@@ -741,7 +741,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     fn write_raw_ap_register_repeated(
         &mut self,
         ap: ApAddress,
-        address: u8,
+        address: u16,
         values: &[u32],
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;

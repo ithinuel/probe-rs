@@ -31,7 +31,7 @@ macro_rules! define_ap_register {
 
         impl Register for $name {
             // ADDRESS is always the lower 4 bits of the register address.
-            const ADDRESS: u8 = $address;
+            const ADDRESS: u16 = $address;
             const NAME: &'static str = stringify!($name);
         }
 

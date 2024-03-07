@@ -12,7 +12,7 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct MockMemoryAp {
     pub memory: Vec<u8>,
-    store: HashMap<u8, u32>,
+    store: HashMap<u16, u32>,
 }
 
 impl MockMemoryAp {

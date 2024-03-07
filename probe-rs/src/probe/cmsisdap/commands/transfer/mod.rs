@@ -35,7 +35,7 @@ pub struct InnerTransferRequest {
 }
 
 impl InnerTransferRequest {
-    pub fn new(port: PortType, rw: RW, address: u8, data: Option<u32>) -> Self {
+    pub fn new(port: PortType, rw: RW, address: u16, data: Option<u32>) -> Self {
         Self {
             APnDP: port,
             RnW: rw,
@@ -332,7 +332,7 @@ impl Request for TransferBlockRequest {
 }
 
 impl TransferBlockRequest {
-    pub(crate) fn write_request(address: u8, port: PortType, data: Vec<u32>) -> Self {
+    pub(crate) fn write_request(address: u16, port: PortType, data: Vec<u32>) -> Self {
         let inner = InnerTransferBlockRequest {
             ap_n_dp: port,
             r_n_w: RW::W,
@@ -348,7 +348,7 @@ impl TransferBlockRequest {
         }
     }
 
-    pub(crate) fn read_request(address: u8, port: PortType, read_count: u16) -> Self {
+    pub(crate) fn read_request(address: u16, port: PortType, read_count: u16) -> Self {
         let inner = InnerTransferBlockRequest {
             ap_n_dp: port,
             r_n_w: RW::R,

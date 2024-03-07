@@ -131,7 +131,7 @@ impl DpRegister for Abort {
 }
 
 impl Register for Abort {
-    const ADDRESS: u8 = 0x0;
+    const ADDRESS: u16 = 0x0;
     const NAME: &'static str = "ABORT";
 }
 
@@ -311,7 +311,7 @@ impl DpRegister for Ctrl {
 }
 
 impl Register for Ctrl {
-    const ADDRESS: u8 = 0x04;
+    const ADDRESS: u16 = 0x04;
     const NAME: &'static str = "CTRL/STAT";
 }
 
@@ -369,7 +369,7 @@ impl DpRegister for Select {
 }
 
 impl Register for Select {
-    const ADDRESS: u8 = 0x8;
+    const ADDRESS: u16 = 0x8;
     const NAME: &'static str = "SELECT";
 }
 
@@ -435,7 +435,7 @@ impl DpRegister for DPIDR {
 }
 
 impl Register for DPIDR {
-    const ADDRESS: u8 = 0x0;
+    const ADDRESS: u16 = 0x0;
     const NAME: &'static str = "DPIDR";
 }
 
@@ -475,7 +475,7 @@ impl DpRegister for DPIDR1 {
 }
 
 impl Register for DPIDR1 {
-    const ADDRESS: u8 = 0x10;
+    const ADDRESS: u16 = 0x10;
     const NAME: &'static str = "DPIDR1";
 }
 
@@ -529,7 +529,7 @@ impl DpRegister for TARGETID {
 }
 
 impl Register for TARGETID {
-    const ADDRESS: u8 = 0x24;
+    const ADDRESS: u16 = 0x24;
     const NAME: &'static str = "TARGETID";
 }
 
@@ -563,7 +563,7 @@ impl DpRegister for BASEPTR0 {
 }
 
 impl Register for BASEPTR0 {
-    const ADDRESS: u8 = 0x20;
+    const ADDRESS: u16 = 0x20;
     const NAME: &'static str = "BASEPTR0";
 }
 
@@ -595,7 +595,7 @@ impl DpRegister for BASEPTR1 {
 }
 
 impl Register for BASEPTR1 {
-    const ADDRESS: u8 = 0x30;
+    const ADDRESS: u16 = 0x30;
     const NAME: &'static str = "BASEPTR1";
 }
 
@@ -646,11 +646,6 @@ impl From<DPIDR> for DebugPortId {
 #[derive(Debug, Clone)]
 pub struct RdBuff(pub u32);
 
-impl Register for RdBuff {
-    const ADDRESS: u8 = 0xc;
-    const NAME: &'static str = "RDBUFF";
-}
-
 impl TryFrom<u32> for RdBuff {
     type Error = RegisterParseError;
 
@@ -668,6 +663,11 @@ impl From<RdBuff> for u32 {
 
 impl DpRegister for RdBuff {
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
+}
+
+impl Register for RdBuff {
+    const ADDRESS: u16 = 0xc;
+    const NAME: &'static str = "RDBUFF";
 }
 
 /// Specifies if pushed-find operations are implemented or not.
