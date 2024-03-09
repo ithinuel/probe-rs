@@ -168,7 +168,7 @@ impl ArmDebugState for Initialized {}
 
 #[derive(Debug)]
 pub(crate) struct DpState {
-    pub _debug_port_version: DebugPortVersion,
+    pub debug_port_version: DebugPortVersion,
 
     pub current_dpbanksel: u8,
 
@@ -183,7 +183,7 @@ pub(crate) struct DpState {
 impl DpState {
     pub fn new() -> Self {
         Self {
-            _debug_port_version: DebugPortVersion::Unsupported(0xFF),
+            debug_port_version: DebugPortVersion::Unsupported(0xFF),
             current_dpbanksel: 0,
             current_apsel: 0,
             current_apbanksel: 0,
@@ -506,6 +506,9 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
             let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp)?.into();
             if idr.version == DebugPortVersion::DPv3 {
+                // note(unwrap): we have inserted the state above, it must exist.
+                self.state.dps.get_mut(&dp).unwrap().debug_port_version = idr.version;
+
                 let idr1: DPIDR1 = self.read_dp_register(dp)?;
                 let base_ptr0: BASEPTR0 = self.read_dp_register(dp)?;
                 let base_ptr1: BASEPTR1 = self.read_dp_register(dp)?;
