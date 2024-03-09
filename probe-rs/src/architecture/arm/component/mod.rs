@@ -109,7 +109,7 @@ pub fn get_arm_components(
 ) -> Result<Vec<CoresightComponent>, ArmError> {
     let mut components = Vec::new();
 
-    for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
+    for ap_index in 0..(interface.num_access_ports(dp)? as u64) {
         let ap_information = interface
             .ap_information(GenericAp::new(ApAddress { dp, ap: ap_index }))?
             .clone();

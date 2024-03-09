@@ -591,8 +591,8 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         let port = ap.ap;
         let ap_bank = (ap_register_address >> 4) as u8;
 
-        let mut cache_changed = if dp_state.current_apsel != port {
-            dp_state.current_apsel = port;
+        let mut cache_changed = if u64::from(dp_state.current_apsel) != port {
+            dp_state.current_apsel = port as u8;
             true
         } else {
             false

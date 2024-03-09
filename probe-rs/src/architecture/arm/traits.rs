@@ -51,15 +51,19 @@ pub struct ApAddress {
     /// The address of the debug port this access port belongs to.
     pub dp: DpAddress,
     /// The access port number.
-    pub ap: u8,
+    ///
+    /// On DPv0 to v2, this is an index within [0;255]. All Access ports are expected to be contiguous
+    /// starting at 0.
+    /// On DPv3, this is an up to 52-bits. See DPIDR1 for the size used on that device.
+    pub ap: u64,
 }
 
 impl ApAddress {
     /// Create a new `ApAddress` belonging to the default debug port.
-    pub fn with_default_dp(ap: u8) -> Self {
+    pub fn apv1_with_default_dp(ap: u8) -> Self {
         Self {
             dp: DpAddress::Default,
-            ap,
+            ap: ap.into(),
         }
     }
 }

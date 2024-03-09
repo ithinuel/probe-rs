@@ -241,7 +241,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 
     for ap_index in 0..num_access_ports {
         let ap = ApAddress {
-            ap: ap_index as u8,
+            ap: ap_index as u64,
             dp,
         };
         let access_port = GenericAp::new(ap);

@@ -136,7 +136,7 @@ pub enum CoreAccessOptions {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
-    pub ap: u8,
+    pub ap: u64,
     /// The port select number to access the core
     pub psel: u32,
     /// The base address of the debug registers for the core.
