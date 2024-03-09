@@ -122,15 +122,15 @@ impl Debugger {
 
                 // Check if we have configured cores
                 if core_statuses.is_empty() {
-                    if debug_adapter.configuration_is_done() {
+                    return if debug_adapter.configuration_is_done() {
                         // We've passed `configuration_done` and still do not have at least one core configured.
-                        return Err(DebuggerError::Other(anyhow!(
+                        Err(DebuggerError::Other(anyhow!(
                             "Cannot continue unless one target core configuration is defined."
-                        )));
+                        )))
                     } else {
                         // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
-                        return Ok(DebugSessionStatus::Continue);
-                    }
+                        Ok(DebugSessionStatus::Continue)
+                    };
                 }
 
                 // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
