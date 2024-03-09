@@ -1,11 +1,11 @@
 use super::{
     ap::{
-        valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, GenericAp, MemoryAp,
-        BASE, BASE2, CFG, CSW, IDR,
+        valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, DataSize, GenericAp,
+        MemoryAp, BASE, BASE2, CFG, CSW, IDR,
     },
     dp::{
-        Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
-        BASEPTR1, DPIDR, DPIDR1,
+        Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, Select1,
+        BASEPTR0, BASEPTR1, DPIDR, DPIDR1,
     },
     memory::{
         adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
@@ -15,7 +15,6 @@ use super::{
     ApAddress, ArmError, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
 };
 use crate::{
-    architecture::arm::ap::DataSize,
     probe::{DebugProbe, DebugProbeError, Probe},
     CoreStatus, Error as ProbeRsError,
 };
@@ -166,14 +165,59 @@ impl ArmDebugState for Uninitialized {}
 
 impl ArmDebugState for Initialized {}
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Selection(u64);
+impl Selection {
+    pub fn dp_bank_sel(&self) -> u8 {
+        (self.0 & 0xF) as u8
+    }
+    pub fn set_dp_bank_sel(&mut self, dp_bank_sel: u8) {
+        self.0 &= !0xF;
+        self.0 |= u64::from(dp_bank_sel & 0xF);
+    }
+    //pub fn apv1_ap_sel(&self) -> u8 {
+    //    ((self.0 >> 24) & 0xF) as u8
+    //}
+    pub fn set_apv1_ap_sel(&mut self, ap_sel: u8) {
+        self.0 = (self.0 & !0xFF000000) | (u64::from(ap_sel) << 24);
+    }
+    //pub fn apv1_ap_bank_sel(&self) -> u8 {
+    //    ((self.0 >> 4) & 0xF) as u8
+    //}
+    pub fn set_apv1_ap_bank_sel(&mut self, ap_bank_sel: u8) {
+        self.0 = (self.0 & !0xF0) | u64::from((ap_bank_sel & 0xF) << 4);
+    }
+    pub fn apv2_addr_hi(&self) -> u32 {
+        (self.0 >> 32) as u32
+    }
+    pub fn apv2_addr_lo(&self) -> u32 {
+        (self.0 & 0xFFFF_FFF0) as u32
+    }
+
+    pub fn with_apv2_addr<F: FnOnce(u64) -> u64>(&mut self, closure: F) {
+        let addr = closure(self.0 & !0xF);
+        self.0 = (addr & !0xF) | (self.0 & 0xF);
+    }
+
+    pub fn as_select(&self) -> Select {
+        Select(self.0 as u32)
+    }
+    pub fn as_select1(&self) -> Select1 {
+        Select1((self.0 >> 32) as u32)
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct DpState {
     pub debug_port_version: DebugPortVersion,
 
-    pub current_dpbanksel: u8,
-
-    pub current_apsel: u8,
-    pub current_apbanksel: u8,
+    /// Active Selection
+    /// - [3:0]: DPBANKSEL
+    /// - On APv1
+    ///   - [31:24]: APSEL
+    ///   - [7:4]: APBANKSEL
+    /// - On APv2: [63:4]: Address
+    pub current_selection: Selection,
 
     /// Information about the APs of the target.
     /// APs are identified by a number, starting from zero.
@@ -184,9 +228,7 @@ impl DpState {
     pub fn new() -> Self {
         Self {
             debug_port_version: DebugPortVersion::Unsupported(0xFF),
-            current_dpbanksel: 0,
-            current_apsel: 0,
-            current_apbanksel: 0,
+            current_selection: Selection(0),
             ap_information: Vec::new(),
         }
     }
@@ -560,23 +602,19 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         // On ADIv5, only address 0x4 is banked, the rest are don't care.
         // On ADIv6, address 0x0 and 0x4 are banked, the rest are don't care.
 
-        let bank = (dp_register_address >> 4) as u8;
+        let dp_bank_sel = ((dp_register_address >> 4) & 0xF) as u8;
         let addr = dp_register_address & 0xF;
 
         if addr != 0 && addr != 4 {
             return Ok(());
         }
 
-        if bank != dp_state.current_dpbanksel {
-            dp_state.current_dpbanksel = bank;
+        if dp_bank_sel != dp_state.current_selection.dp_bank_sel() {
+            dp_state.current_selection.set_dp_bank_sel(dp_bank_sel);
 
-            let mut select = Select(0);
+            let select = dp_state.current_selection.as_select();
 
-            tracing::debug!("Changing DP_BANK_SEL to {}", dp_state.current_dpbanksel);
-
-            select.set_ap_sel(dp_state.current_apsel);
-            select.set_ap_bank_sel(dp_state.current_apbanksel);
-            select.set_dp_bank_sel(dp_state.current_dpbanksel);
+            tracing::debug!("Changing DP_BANK_SEL to {}", dp_bank_sel);
 
             self.write_dp_register(dp, select)?;
         }
@@ -590,36 +628,47 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         ap_register_address: u16,
     ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(ap.dp)?;
+        let sel_current = dp_state.current_selection.clone();
+        let mut sel_new = sel_current.clone();
 
-        let port = ap.ap;
-        let ap_bank = (ap_register_address >> 4) as u8;
+        let (select, select1) = if dp_state.debug_port_version == DebugPortVersion::DPv3 {
+            sel_new.with_apv2_addr(|apv2_addr| apv2_addr + u64::from(ap_register_address & 0xFFF0));
 
-        let mut cache_changed = if u64::from(dp_state.current_apsel) != port {
-            dp_state.current_apsel = port as u8;
-            true
+            let select = (sel_current.apv2_addr_lo() != sel_new.apv2_addr_lo())
+                .then_some(sel_new.as_select());
+            let select1 = (sel_current.apv2_addr_hi() != sel_new.apv2_addr_hi())
+                .then_some(sel_new.as_select1());
+
+            (select, select1)
         } else {
-            false
+            let ap = ap.ap as u8;
+            let ap_bank = (ap_register_address >> 4) as u8;
+
+            sel_new.set_apv1_ap_sel(ap);
+            sel_new.set_apv1_ap_bank_sel(ap_bank);
+
+            let select = (sel_current != sel_new).then(|| {
+                let new = sel_new.as_select();
+
+                tracing::debug!(
+                    "Changing AP to {}, AP_BANK_SEL to {}",
+                    new.ap_sel(),
+                    new.ap_bank_sel()
+                );
+                new
+            });
+            (select, None)
         };
 
-        if dp_state.current_apbanksel != ap_bank {
-            dp_state.current_apbanksel = ap_bank;
-            cache_changed = true;
+        if select.is_some() || select1.is_some() {
+            dp_state.current_selection = sel_new;
         }
 
-        if cache_changed {
-            let mut select = Select(0);
-
-            tracing::debug!(
-                "Changing AP to {}, AP_BANK_SEL to {}",
-                dp_state.current_apsel,
-                dp_state.current_apbanksel
-            );
-
-            select.set_ap_sel(dp_state.current_apsel);
-            select.set_ap_bank_sel(dp_state.current_apbanksel);
-            select.set_dp_bank_sel(dp_state.current_dpbanksel);
-
+        if let Some(select) = select {
             self.write_dp_register(ap.dp, select)?;
+        }
+        if let Some(select1) = select1 {
+            self.write_dp_register(ap.dp, select1)?;
         }
 
         Ok(())
