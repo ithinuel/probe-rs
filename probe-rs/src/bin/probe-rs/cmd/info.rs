@@ -1,16 +1,17 @@
 use std::fmt::Write;
 
 use anyhow::{anyhow, Result};
+use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
             ap::{GenericAp, MemoryAp},
             armv6m::Demcr,
             component::Scs,
-            dp::{DPIDR, TARGETID},
+            dp::{DebugPortId, DebugPortVersion, DpAccess, MinDpSupport, DPIDR, TARGETID},
             memory::{Component, CoresightComponent, PeripheralType},
             sequences::DefaultArmSequence,
-            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
+            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::XtensaCommunicationInterface,
@@ -193,23 +194,21 @@ fn try_show_info(
 }
 
 fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result<()> {
-    let dp_info = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
-    let dp_info = DPIDR(dp_info);
+    let dp_info: DebugPortId = interface.read_dp_register::<DPIDR>(dp)?.into();
 
     let mut dp_node = String::new();
 
-    write!(dp_node, "Debug Port: Version {}", dp_info.version())?;
+    write!(dp_node, "Debug Port: Version {}", dp_info.version)?;
 
-    if dp_info.min() {
+    if let MinDpSupport::Implemented = dp_info.min_dp_support {
         write!(dp_node, ", MINDP")?;
     }
 
-    let jep_code = jep106::JEP106Code::new(dp_info.jep_cc(), dp_info.jep_id());
-
-    if dp_info.version() == 2 {
-        let target_id = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
-
-        let target_id = TARGETID(target_id);
+    if matches!(
+        dp_info.version,
+        DebugPortVersion::DPv2 | DebugPortVersion::DPv3
+    ) {
+        let target_id: TARGETID = interface.read_dp_register(dp)?;
 
         let part_no = target_id.tpartno();
         let revision = target_id.trevision();
@@ -232,7 +231,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
         write!(
             dp_node,
             ", DP Designer: {}",
-            jep_code.get().unwrap_or("<unknown>")
+            dp_info.designer.get().unwrap_or("<unknown>")
         )?;
     }
 
@@ -271,14 +270,10 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
             }
 
             ApInformation::Other { address, idr } => {
-                let designer = idr.DESIGNER;
+                let jep = idr.DESIGNER;
 
-                let cc = (designer >> 7) as u8;
-                let id = (designer & 0x7f) as u8;
-
-                let jep = jep106::JEP106Code::new(cc, id);
-
-                let ap_type = if designer == 0x43b {
+                let jep_arm = JEP106Code::new(4, 0x3b);
+                let ap_type = if idr.DESIGNER == jep_arm {
                     format!("{:?}", idr.TYPE)
                 } else {
                     format!("{:#x}", idr.TYPE as u8)

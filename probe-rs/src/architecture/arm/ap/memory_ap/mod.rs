@@ -257,6 +257,7 @@ define_ap_register!(
     ///
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
+    #[derive(Default)]
     name: CSW,
     address: 0x00,
     fields: [
@@ -277,8 +278,6 @@ define_ap_register!(
         /// Note
         /// In ADIv5 and older versions of the architecture, the CSW.SPIDEN field is in the same bit position as CSW.SDeviceEn, and has the same meaning. From ADIv6, the name SDeviceEn is used to avoid confusion between this field and the SPIDEN signal on the authentication interface.
         SPIDEN: u8,                // 1 bit
-        /// Reserved.
-        _RES0: u8,                 // 7 bits
         /// `1` if memory tagging access is enabled.
         MTE: u8,                   // 1 bits
         /// Memory tagging type. Implementation defined.
@@ -294,8 +293,6 @@ define_ap_register!(
         DeviceEn: u8,              // 1 bit
         /// The address increment on DRW access.
         AddrInc: AddressIncrement, // 2 bits
-        /// Reserved
-        _RES1: u8,                 // 1 bit
         /// The access size of this memory AP.
         SIZE: DataSize,            // 3 bits
     ],
@@ -305,14 +302,12 @@ define_ap_register!(
         PROT: ((value >> 28) & 0x03) as u8,
         CACHE: ((value >> 24) & 0x0F) as u8,
         SPIDEN: ((value >> 23) & 0x01) as u8,
-        _RES0: 0,
         MTE: ((value >> 15) & 0x01) as u8,
         Type: ((value >> 12) & 0x07) as u8,
         Mode: ((value >> 8) & 0x0F) as u8,
         TrinProg: ((value >> 7) & 0x01) as u8,
         DeviceEn: ((value >> 6) & 0x01) as u8,
         AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
-        _RES1: 0,
         SIZE: DataSize::from_u8((value & 0x07) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
     }),
     to: value => (u32::from(value.DbgSwEnable) << 31)
