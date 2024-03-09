@@ -274,7 +274,7 @@ bitfield! {
 define_dp_register!(Select, DPv1, 0x8, "SELECT");
 bitfield! {
     /// SELECT, AP Select register (see ADI v5.2 B2.2.9)
-    #[derive(Clone)]
+    #[derive(Clone, PartialEq, Eq)]
     pub struct Select(u32);
     impl Debug;
     /// Selects the AP with the ID number APSEL. If there is no AP with the ID APSEL, all AP transactions return zero on reads and are ignored on writes. See Register maps, and accesses to reserved addresses on page B2-52.
@@ -302,9 +302,39 @@ bitfield! {
     /// * 0x3 DLPIDR
     /// * 0x4 EVENTSTAT
     /// All other values of SELECT.DPBANKSEL are reserved. If the field is set to a reserved value, accesses to DP register 0x4 are RES0.
+    /// DPv3 In DPv3 the SELECT.DPBANKSEL field controls which DP register is selected at address 0x0 and 0x4. Table B2-6 (of ADIv6’s specification) shows the permitted values of this field.
+    /// Table B2-6 DPBANKSEL DP register allocation in DPv3 DPBANKSEL DP register at address 0x0
+    /// * 0x0 DPIDR
+    /// * 0x1 DPIDR1
+    /// * 0x2 BASEPTR0
+    /// * 0x3 BASEPTR1
+    /// and at address 0x4
+    /// * 0x0 CTRL/STAT
+    /// * 0x1 DLCR
+    /// * 0x2 TARGETID
+    /// * 0x3 DLPIDR
+    /// * 0x4 EVENTSTAT
+    /// * 0x5 SELECT1
+    /// All other values of SELECT.DPBANKSEL are reserved. If the field is set to a reserved value, accesses to DP register 0x0 or 0x4 are RES0.
     /// After a powerup reset, this field is 0x0. Note
     /// Some previous ADI revisions have described DPBANKSEL as a single-bit field called CTRSEL, defined only for SW-DP. From issue B of this document, DPBANKSEL is redefined. The new definition is backwards-compatible.
     pub u8, dp_bank_sel, set_dp_bank_sel: 3, 0;
+    /// Address output bit [31:4].
+    /// The ADDR field selects a four-word bank of system location to access.
+    pub u32, addr_lo, set_addr_lo: 31, 4;
+}
+
+define_dp_register!(Select1, DPv3, 0x54, "SELECT1");
+bitfield! {
+    /// SELECT1, AP Select register (see ADI v6.0 B2.2.11)
+    #[derive(Clone)]
+    pub struct Select1(u32);
+    impl Debug;
+    /// Selects the AP (high word). See Register maps, and accesses to reserved addresses in table B2-3.
+    /// After a powerup reset, the value of this field is UNKNOWN.
+    /// Note
+    /// Every Arm Debug Interface implementation must include at least one AP.
+    pub u8, addr_hi, set_addr_hi: 31, 0;
 }
 
 define_dp_register!(DPIDR, DPv1, 0x0, "DPIDR");
