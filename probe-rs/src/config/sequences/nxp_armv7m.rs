@@ -9,7 +9,7 @@ use crate::{
     architecture::arm::{
         ap::{
             v1::{MemoryAp, DRW, TAR},
-            AccessPort, AccessPortError, ApAccess,
+            AccessPortError, ApAccess,
         },
         communication_interface::Initialized,
         core::armv7m::{Aircr, Dhcsr},

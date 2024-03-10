@@ -1,3 +1,5 @@
+//! Types and functions for interacting with access ports.
+
 use super::{
     communication_interface::RegisterParseError, ApAddress, ArmError, DapAccess, Register,
 };
@@ -5,6 +7,7 @@ use crate::architecture::arm::dp::DebugPortError;
 use crate::probe::DebugProbeError;
 
 pub mod v1;
+pub mod v2;
 
 /// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]

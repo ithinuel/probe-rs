@@ -1,4 +1,4 @@
-//! Types and functions for interacting with access ports.
+//! Access port v1 specific types and methods.
 
 #[macro_use]
 pub mod register_generation;

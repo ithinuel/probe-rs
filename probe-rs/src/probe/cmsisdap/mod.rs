@@ -895,7 +895,7 @@ impl RawDapAccess for CmsisDap {
 
     /// Reads the DAP register on the specified port and address.
     fn raw_read_register(&mut self, port: PortType, addr: u16) -> Result<u32, ArmError> {
-        let res = self.batch_add(BatchCommand::Read(port, addr as u16))?;
+        let res = self.batch_add(BatchCommand::Read(port, addr))?;
 
         // NOTE(unwrap): batch_add will always return Some if the last command is a read
         // and running the batch was successful.
@@ -909,7 +909,7 @@ impl RawDapAccess for CmsisDap {
         addr: u16,
         value: u32,
     ) -> Result<(), ArmError> {
-        self.batch_add(BatchCommand::Write(port, addr as u16, value))
+        self.batch_add(BatchCommand::Write(port, addr, value))
             .map(|_| ())
     }
 
