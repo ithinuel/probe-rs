@@ -1,7 +1,8 @@
-use super::adi_v5_memory_interface::ArmProbe;
 use super::AccessPortError;
 use crate::architecture::arm::ArmError;
-use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
+use crate::architecture::arm::{
+    ap::v1::MemoryAp, communication_interface::ArmProbeInterface, ArmProbe,
+};
 use enum_primitive_derive::Primitive;
 use num_traits::cast::FromPrimitive;
 

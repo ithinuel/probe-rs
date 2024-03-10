@@ -8,13 +8,13 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPort, ApAccess, GenericAp, MemoryAp, CSW, IDR},
+        ap::v1::{GenericAp, MemoryAp, CSW, IDR},
+        ap::{AccessPort, ApAccess},
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-        memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence,
-        ApAddress, ArmCommunicationInterface, ArmError, DapAccess, DpAddress, Pins,
+        ApAddress, ArmCommunicationInterface, ArmError, ArmProbe, DapAccess, DpAddress, Pins,
     },
     core::MemoryMappedRegister,
 };

@@ -183,7 +183,7 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
         core_type,
         core_access_options: match core_type.architecture() {
             Architecture::Arm => CoreAccessOptions::Arm(ArmCoreAccessOptions {
-                ap: processor.ap,
+                ap: processor.ap as u64,
                 psel: 0,
                 debug_base: None,
                 cti_base: None,

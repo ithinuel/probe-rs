@@ -30,9 +30,9 @@ fn main() -> Result<()> {
         ap: 1,
     };
 
-    const RESET: u8 = 0;
-    const ERASEALL: u8 = 4;
-    const ERASEALLSTATUS: u8 = 8;
+    const RESET: u16 = 0;
+    const ERASEALL: u16 = 4;
+    const ERASEALLSTATUS: u16 = 8;
 
     // Reset
     iface.write_raw_ap_register(port, RESET, 1)?;

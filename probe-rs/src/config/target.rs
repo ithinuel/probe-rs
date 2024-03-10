@@ -23,7 +23,7 @@ use super::{
 };
 use crate::architecture::{
     arm::{
-        ap::MemoryAp,
+        ap::v1::MemoryAp,
         sequences::{ArmDebugSequence, DefaultArmSequence},
         ApAddress, DpAddress,
     },

@@ -5,13 +5,13 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap::{GenericAp, MemoryAp},
+            ap::v1::{GenericAp, MemoryAp},
             armv6m::Demcr,
             component::Scs,
             dp::{DebugPortId, DebugPortVersion, DpAccess, MinDpSupport, DPIDR, TARGETID},
             memory::{Component, CoresightComponent, PeripheralType},
             sequences::DefaultArmSequence,
-            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation,
+            ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::XtensaCommunicationInterface,
@@ -237,17 +237,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 
     let mut tree = Tree::new(dp_node);
 
-    let num_access_ports = interface.num_access_ports(dp)?;
-
-    for ap_index in 0..num_access_ports {
-        let ap = ApAddress {
-            ap: ap_index as u64,
-            dp,
-        };
-        let access_port = GenericAp::new(ap);
-
-        let ap_information = interface.ap_information(access_port)?;
-
+    for ap_information in interface.access_ports(dp)? {
         match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {
                 debug_base_address,
@@ -255,10 +245,11 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
                 device_enabled,
                 ..
             }) => {
+                let access_port = GenericAp::new(address);
                 let mut ap_nodes = Tree::new(format!("{} MemoryAP", address.ap));
 
-                if *device_enabled {
-                    match handle_memory_ap(access_port.into(), *debug_base_address, interface) {
+                if device_enabled {
+                    match handle_memory_ap(access_port.into(), debug_base_address, interface) {
                         Ok(component_tree) => ap_nodes.push(component_tree),
                         Err(e) => ap_nodes.push(format!("Error during access: {e}")),
                     };

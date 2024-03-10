@@ -7,13 +7,15 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPortError, ApAccess, MemoryAp, DRW, TAR},
+        ap::{
+            v1::{MemoryAp, DRW, TAR},
+            AccessPort, AccessPortError, ApAccess,
+        },
         communication_interface::Initialized,
         core::armv7m::{Aircr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select},
-        memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence,
-        ApAddress, ArmCommunicationInterface, ArmError, DpAddress,
+        ApAddress, ArmCommunicationInterface, ArmError, ArmProbe, DpAddress,
     },
     core::MemoryMappedRegister,
 };

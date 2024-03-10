@@ -2,11 +2,10 @@
 
 use crate::{
     architecture::arm::{
-        ap::MemoryAp,
+        ap::v1::MemoryAp,
         communication_interface::Initialized,
-        memory::adi_v5_memory_interface::ArmProbe,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
-        ApAddress, ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess,
+        ApAddress, ArmCommunicationInterface, ArmError, ArmProbe, ArmProbeInterface, DapAccess,
     },
     session::MissingPermissions,
 };

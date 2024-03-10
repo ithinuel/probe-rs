@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use crate::architecture::arm::{
-    ap::MemoryAp,
+    ap::v1::MemoryAp,
     component::TraceSink,
     memory::CoresightComponent,
     sequences::{ArmDebugSequence, ArmDebugSequenceError},
@@ -49,7 +49,7 @@ impl Nrf52 {
 }
 
 mod clock {
-    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError};
+    use crate::architecture::arm::{ArmError, ArmProbe};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component

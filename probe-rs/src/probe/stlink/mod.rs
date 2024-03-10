@@ -6,18 +6,17 @@ mod usb_interface;
 
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
 use crate::{
     architecture::arm::{
-        ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
+        ap::v1::{valid_access_ports, ApClass, MemoryAp, IDR},
+        ap::{AccessPort, ApAccess},
         communication_interface::{
             ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
         },
         memory::Component,
         sequences::ArmDebugSequence,
-        ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
-        SwoMode,
+        valid_32bit_arm_address, ApAddress, ApInformation, ArmChipInfo, ArmError, ArmProbe,
+        DapAccess, DpAddress, Pins, SwoAccess, SwoConfig, SwoMode,
     },
     probe::{DebugProbeInfo, DebugProbeSelector, Probe, ProbeFactory},
     Error as ProbeRsError,
@@ -1480,7 +1479,7 @@ impl ArmProbeInterface for StlinkArmDebug {
     #[tracing::instrument(skip(self))]
     fn ap_information(
         &mut self,
-        access_port: crate::architecture::arm::ap::GenericAp,
+        access_port: crate::architecture::arm::ap::v1::GenericAp,
     ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ArmError> {
         let addr = access_port.ap_address();
         if addr.dp != DpAddress::Default {
@@ -1528,12 +1527,12 @@ impl ArmProbeInterface for StlinkArmDebug {
         Ok(None)
     }
 
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {
+    fn access_ports(&mut self, dp: DpAddress) -> Result<Vec<ApInformation>, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
-        Ok(self.ap_information.len())
+        Ok(self.ap_information.clone())
     }
 
     fn close(self: Box<Self>) -> Probe {

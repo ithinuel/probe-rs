@@ -1,7 +1,7 @@
 //! Common functions and data types for Cortex-M core variants
 
 use crate::{
-    architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError},
+    architecture::arm::{ArmError, ArmProbe},
     core::RegisterId,
     memory_mapped_bitfield_register, BreakpointCause, CoreInterface, Error, HaltReason,
     MemoryMappedRegister,

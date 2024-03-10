@@ -1,7 +1,7 @@
 use crate::{
     architecture::{
         arm::{
-            ap::MemoryAp,
+            ap::v1::MemoryAp,
             core::{CortexAState, CortexMState},
             ApAddress, ArmProbeInterface, DpAddress,
         },

@@ -5,14 +5,11 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ap::MemoryAp,
+    ap::v1::MemoryAp,
     component::{TraceFunnel, TraceSink},
-    memory::{
-        adi_v5_memory_interface::ArmProbe, romtable::RomTableError, CoresightComponent,
-        PeripheralType,
-    },
+    memory::{romtable::RomTableError, CoresightComponent, PeripheralType},
     sequences::ArmDebugSequence,
-    ApAddress, ArmError, ArmProbeInterface, DpAddress,
+    ApAddress, ArmError, ArmProbe, ArmProbeInterface, DpAddress,
 };
 
 // Base address of the trace funnel that directs trace data to the SWO peripheral.
@@ -79,7 +76,7 @@ impl Stm32h7 {
 }
 
 mod dbgmcu {
-    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError};
+    use crate::architecture::arm::{ArmError, ArmProbe};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component

@@ -1380,7 +1380,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::ap_v1_with_default_dp(1),
+            ap: ApAddress::apv1_with_default_dp(1),
             address: 0xC,
             result: 1,
         });
@@ -1458,7 +1458,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::ap_v1_with_default_dp(1),
+            ap: ApAddress::apv1_with_default_dp(1),
             address: 0xC,
             result: 1,
         });
@@ -1514,7 +1514,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::ap_v1_with_default_dp(1),
+            ap: ApAddress::apv1_with_default_dp(1),
             address: 0xC,
             result: 1,
         });
@@ -1588,7 +1588,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::ap_v1_with_default_dp(1),
+            ap: ApAddress::apv1_with_default_dp(1),
             address: 0xC,
             result: 1,
         });
@@ -1662,7 +1662,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::ap_v1_with_default_dp(1),
+            ap: ApAddress::apv1_with_default_dp(1),
             address: 0xC,
             result: 1,
         });
@@ -1754,7 +1754,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::ap_v1_with_default_dp(1),
+            ap: ApAddress::apv1_with_default_dp(1),
             address: 0xC,
             result: 1,
         });

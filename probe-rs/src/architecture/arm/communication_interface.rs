@@ -1,20 +1,20 @@
 use super::{
-    ap::{
-        valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, DataSize, GenericAp,
-        MemoryAp, BASE, BASE2, CFG, CSW, IDR,
+    ap::v1::{
+        valid_access_ports, ApClass, BaseaddrFormat, DataSize, GenericAp, MemoryAp, BASE, BASE2,
+        CFG, CSW, IDR,
     },
+    ap::{AccessPort, ApAccess},
     dp::{
-        Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, Select1,
-        BASEPTR0, BASEPTR1, DPIDR, DPIDR1,
+        Abort, Ctrl, DebugPortId, DebugPortVersion, DpAccess, Select, Select1, BASEPTR0, BASEPTR1,
+        DPIDR, DPIDR1,
     },
-    memory::{
-        adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
-        Component,
-    },
+    memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
     sequences::{ArmDebugSequence, DefaultArmSequence},
-    ApAddress, ArmError, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
+    ApAddress, ArmError, ArmProbe, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess,
+    SwoConfig,
 };
 use crate::{
+    architecture::arm::dp::DebugPortError,
     probe::{DebugProbe, DebugProbeError, Probe},
     CoreStatus, Error as ProbeRsError,
 };
@@ -85,11 +85,11 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     /// Return the currently connected debug port.
     fn current_debug_port(&self) -> DpAddress;
 
-    /// Returns the number of access ports the debug port has.
+    /// Returns an iterator over the access points on that Debug Port.
     ///
     /// If the target device has multiple debug ports, this will switch the active debug port
-    /// if necessary. This will also  
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError>;
+    /// if necessary.
+    fn access_ports(&mut self, dp: DpAddress) -> Result<Vec<ApInformation>, ArmError>;
 
     /// Reads the chip info from the romtable of given debug port.
     fn read_chip_info_from_rom_table(
@@ -175,7 +175,7 @@ impl Selection {
         self.0 &= !0xF;
         self.0 |= u64::from(dp_bank_sel & 0xF);
     }
-    //pub fn apv1_ap_sel(&self) -> u8 {
+    //pub fn npv1_ap_sel(&self) -> u8 {
     //    ((self.0 >> 24) & 0xF) as u8
     //}
     pub fn set_apv1_ap_sel(&mut self, ap_sel: u8) {
@@ -401,8 +401,8 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         ArmCommunicationInterface::read_chip_info_from_rom_table(self, dp)
     }
 
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {
-        ArmCommunicationInterface::num_access_ports(self, dp)
+    fn access_ports(&mut self, dp: DpAddress) -> Result<Vec<ApInformation>, ArmError> {
+        ArmCommunicationInterface::access_ports(self, dp)
     }
 
     fn close(self: Box<Self>) -> Probe {
@@ -554,36 +554,76 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 let idr1: DPIDR1 = self.read_dp_register(dp)?;
                 let base_ptr0: BASEPTR0 = self.read_dp_register(dp)?;
                 let base_ptr1: BASEPTR1 = self.read_dp_register(dp)?;
-                let base_ptr_str = base_ptr0.valid().then(|| {
-                    format!(
-                        "0x{:x}",
-                        u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12)
-                    )
-                });
+                let base_ptr = base_ptr0
+                    .valid()
+                    .then(|| u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12));
                 tracing::info!(
                     "DPv3 detected: DPIDR1:{:?} BASE_PTR: {}",
                     idr1,
-                    base_ptr_str.as_deref().unwrap_or("not valid")
+                    base_ptr
+                        .map(|v| format!("{:x}", v))
+                        .as_deref()
+                        .unwrap_or("not valid")
                 );
 
-                return Err(ArmError::DebugPort(DebugPortError::Unsupported(
-                    "Unsupported version (DPv3)".to_string(),
-                )));
+                let Some(base_ptr) = base_ptr else {
+                    return Err(ArmError::DebugPort(DebugPortError::Unsupported(
+                        "(DPv3) No valid base ptr available.".to_string(),
+                    )));
+                };
+
+                tracing::trace!("Enumerating APs");
+                let access_port: MemoryAp = GenericAp::new(ApAddress { dp, ap: base_ptr }).into();
+                let baseaddr = access_port.base_address(self)?;
+                let mut memory = self.memory_interface(access_port)?;
+                let component = Component::try_parse(&mut *memory, baseaddr)?;
+                if let Component::Class1RomTable(component_id, _) = component {
+                    if let Some(jep106) = component_id.peripheral_id().jep106() {
+                        //ArmChipInfo {
+                        //    manufacturer: jep106,
+                        //    part: component_id.peripheral_id().part(),
+                        //};
+                    }
+                }
+                //let ap = GenericAp::new(ApAddress { dp, port: 0 });
+                //define_ap_register!(
+                //    type: GenericAp,
+                //    /// Identification Register
+                //    ///
+                //    /// The identification register is used to identify
+                //    /// an AP.
+                //    ///
+                //    /// It has to be present on every AP.
+                //    name: PIDR4,
+                //    address: 0xFBC,
+                //    fields: [
+                //        /// .
+                //        DES_2: u8,
+                //        /// .
+                //        SIZE: u8,
+                //    ],
+                //    from: value => Ok(PIDR4 {
+                //        DES_2: (value & 0x0F) as u8,
+                //        SIZE: ((value >> 4) & 0xF) as u8,
+                //    }),
+                //    to: value => u32::from(value.SIZE<<4) | u32::from(value.DES_2)
+                //);
+                //let pidr4: PIDR4 = self.read_ap_register(ap)?;
+            } else {
+                /* determine the number and type of available APs */
+                tracing::trace!("Searching valid APs");
+
+                let ap_span = tracing::debug_span!("AP discovery").entered();
+                for ap in valid_access_ports(self, dp) {
+                    let ap_state = ApInformation::read_from_target(self, ap)?;
+                    tracing::debug!("AP {:#x?}: {:#x?}", ap, ap_state);
+
+                    // note(unwrap): we have inserted the state above, it must exist.
+                    let state = self.state.dps.get_mut(&dp).unwrap();
+                    state.ap_information.push(ap_state);
+                }
+                drop(ap_span);
             }
-
-            /* determine the number and type of available APs */
-            tracing::trace!("Searching valid APs");
-
-            let ap_span = tracing::debug_span!("AP discovery").entered();
-            for ap in valid_access_ports(self, dp) {
-                let ap_state = ApInformation::read_from_target(self, ap)?;
-                tracing::debug!("AP {:x?}: {:?}", ap, ap_state);
-
-                // note(unwrap): we have inserted the state above, it must exist.
-                let state = self.state.dps.get_mut(&dp).unwrap();
-                state.ap_information.push(ap_state);
-            }
-            drop(ap_span);
         }
 
         // note(unwrap): Entry gets inserted above
@@ -688,10 +728,10 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         Ok(state.ap_information.get(addr.ap as usize))
     }
 
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {
+    fn access_ports(&mut self, dp: DpAddress) -> Result<Vec<ApInformation>, ArmError> {
         let state = self.select_dp(dp)?;
 
-        Ok(state.ap_information.len())
+        Ok(state.ap_information.clone())
     }
 }
 

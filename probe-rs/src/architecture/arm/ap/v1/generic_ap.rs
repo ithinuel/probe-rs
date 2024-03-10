@@ -1,7 +1,7 @@
 //! Generic access port
 
-use super::{AccessPort, ApRegister, Register};
-use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress};
+use crate::architecture::arm::ap::{AccessPort, ApRegister};
+use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress, Register};
 use enum_primitive_derive::Primitive;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 

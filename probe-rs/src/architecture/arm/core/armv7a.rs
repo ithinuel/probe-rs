@@ -16,8 +16,7 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        core::armv7a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
-        sequences::ArmDebugSequence, ArmError,
+        core::armv7a_debug_regs::*, sequences::ArmDebugSequence, ArmError, ArmProbe,
     },
     core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
     error::Error,
@@ -999,7 +998,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
 mod test {
     use crate::{
         architecture::arm::{
-            ap::MemoryAp, communication_interface::SwdSequence, sequences::DefaultArmSequence,
+            ap::v1::MemoryAp, communication_interface::SwdSequence, sequences::DefaultArmSequence,
         },
         probe::DebugProbeError,
     };

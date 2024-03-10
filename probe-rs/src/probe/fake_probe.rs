@@ -5,15 +5,16 @@ use probe_rs_target::ScanChainElement;
 
 use crate::{
     architecture::arm::{
-        ap::{memory_ap::mock::MockMemoryAp, AccessPort, MemoryAp},
+        ap::v1::{memory_ap::mock::MockMemoryAp, MemoryAp},
+        ap::AccessPort,
         armv8m::Dhcsr,
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
-        memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
+        memory::adi_v5_memory_interface::ADIMemoryInterface,
         sequences::ArmDebugSequence,
-        ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
-        PortType, RawDapAccess, SwoAccess,
+        ApAddress, ApInformation, ArmError, ArmProbe, ArmProbeInterface, DapAccess, DpAddress,
+        MemoryApInformation, PortType, RawDapAccess, SwoAccess,
     },
     probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
     Error, MemoryMappedRegister,
@@ -502,13 +503,13 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
 
     fn ap_information(
         &mut self,
-        _access_port: crate::architecture::arm::ap::GenericAp,
+        _access_port: crate::architecture::arm::ap::v1::GenericAp,
     ) -> Result<&crate::architecture::arm::ApInformation, ArmError> {
         todo!()
     }
 
-    fn num_access_ports(&mut self, _dp: DpAddress) -> Result<usize, ArmError> {
-        Ok(1)
+    fn access_ports(&mut self, _dp: DpAddress) -> Result<Vec<ApInformation>, ArmError> {
+        todo!()
     }
 
     fn read_chip_info_from_rom_table(

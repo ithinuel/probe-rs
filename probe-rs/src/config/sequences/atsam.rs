@@ -4,10 +4,9 @@ use crate::{
     architecture::{
         self,
         arm::{
-            ap::MemoryAp,
-            memory::adi_v5_memory_interface::ArmProbe,
+            ap::v1::MemoryAp,
             sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
-            ApAddress, ArmError, ArmProbeInterface, DpAddress,
+            ApAddress, ArmError, ArmProbe, ArmProbeInterface, DpAddress,
         },
     },
     probe::DebugProbeError,
@@ -416,7 +415,7 @@ impl ArmDebugSequence for AtSAM {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        default_ap: architecture::arm::ap::MemoryAp,
+        default_ap: architecture::arm::ap::v1::MemoryAp,
         permissions: &Permissions,
     ) -> Result<(), ArmError> {
         // First check if the device is locked

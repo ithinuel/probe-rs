@@ -3,10 +3,10 @@
 use std::sync::Arc;
 
 use super::nrf::Nrf;
-use crate::architecture::arm::ap::{AccessPort, CSW};
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::ap::{v1::CSW, AccessPort};
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmError;
+use crate::architecture::arm::ArmProbe;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
 };

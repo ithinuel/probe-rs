@@ -17,17 +17,14 @@ use crate::{
 };
 
 use super::{
-    ap::{AccessPortError, MemoryAp},
+    ap::{v1::MemoryAp, AccessPortError},
     armv6m::Demcr,
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},
     core::cortex_m::Dhcsr,
     dp::{Abort, Ctrl, DebugPortError, DpAccess, Select, DPIDR},
-    memory::{
-        adi_v5_memory_interface::ArmProbe,
-        romtable::{CoresightComponent, PeripheralType},
-    },
-    ArmCommunicationInterface, ArmError, DpAddress, Pins, PortType, Register,
+    memory::romtable::{CoresightComponent, PeripheralType},
+    ArmCommunicationInterface, ArmError, ArmProbe, DpAddress, Pins, PortType, Register,
 };
 
 /// An error occurred when executing an ARM debug sequence

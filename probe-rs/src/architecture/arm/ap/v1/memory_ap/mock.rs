@@ -1,6 +1,6 @@
-use super::super::{ApAccess, Register};
+use super::super::ApAccess;
 use super::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR};
-use crate::architecture::arm::communication_interface::FlushableArmAccess;
+use crate::architecture::arm::communication_interface::{FlushableArmAccess, Register};
 use crate::architecture::arm::{
     ap::AccessPort,
     dp::{DpAccess, DpRegister},

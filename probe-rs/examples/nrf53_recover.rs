@@ -42,9 +42,9 @@ fn main() -> Result<()> {
         dp: DpAddress::Default,
     };
 
-    const ERASEALL: u8 = 0x04;
-    const ERASEALLSTATUS: u8 = 0x08;
-    const IDR: u8 = 0xFC;
+    const ERASEALL: u16 = 0x04;
+    const ERASEALLSTATUS: u16 = 0x08;
+    const IDR: u16 = 0xFC;
 
     for &ap in &[APP_MEM, NET_MEM, APP_CTRL, NET_CTRL] {
         println!("IDR {:?} {:x}", ap, iface.read_raw_ap_register(ap, IDR)?);
