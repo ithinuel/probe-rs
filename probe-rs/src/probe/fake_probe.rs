@@ -5,8 +5,8 @@ use probe_rs_target::ScanChainElement;
 
 use crate::{
     architecture::arm::{
-        ap::v1::{memory_ap::mock::MockMemoryAp, MemoryAp},
         ap::AccessPort,
+        ap::{v1::memory_ap::mock::MockMemoryAp, MemoryAp},
         armv8m::Dhcsr,
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
@@ -503,7 +503,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
 
     fn ap_information(
         &mut self,
-        _access_port: crate::architecture::arm::ap::v1::GenericAp,
+        _access_port: crate::architecture::arm::ap::GenericAp,
     ) -> Result<&crate::architecture::arm::ApInformation, ArmError> {
         todo!()
     }

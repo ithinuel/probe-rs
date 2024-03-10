@@ -8,7 +8,7 @@ use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::{
     architecture::arm::{
-        ap::v1::{valid_access_ports, ApClass, MemoryAp, IDR},
+        ap::{v1::valid_access_ports, v1::IDR, ApClass, MemoryAp},
         ap::{AccessPort, ApAccess},
         communication_interface::{
             ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
@@ -1479,7 +1479,7 @@ impl ArmProbeInterface for StlinkArmDebug {
     #[tracing::instrument(skip(self))]
     fn ap_information(
         &mut self,
-        access_port: crate::architecture::arm::ap::v1::GenericAp,
+        access_port: crate::architecture::arm::ap::GenericAp,
     ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ArmError> {
         let addr = access_port.ap_address();
         if addr.dp != DpAddress::Default {

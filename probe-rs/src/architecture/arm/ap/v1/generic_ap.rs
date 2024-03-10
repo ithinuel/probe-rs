@@ -1,7 +1,8 @@
 //! Generic access port
 
-use crate::architecture::arm::ap::{AccessPort, ApRegister};
-use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress, Register};
+use crate::architecture::arm::ap::{ApRegister, GenericAp};
+use crate::architecture::arm::{communication_interface::RegisterParseError, Register};
+use crate::define_ap_register;
 use enum_primitive_derive::Primitive;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 
@@ -40,12 +41,6 @@ pub enum ApType {
     /// A AMBA based protected AHB5 AP (see E1.7).
     AmbaAhb5Hprot = 0x8,
 }
-
-define_ap!(
-    /// A generic access port which implements just the register every access port has to implement
-    /// to be compliant with the ADI 5.2 specification.
-    GenericAp
-);
 
 define_ap_register!(
     type: GenericAp,

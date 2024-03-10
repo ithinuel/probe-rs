@@ -64,18 +64,18 @@ macro_rules! define_ap {
         $(#[$outer])*
         #[derive(Clone, Copy, Debug)]
         pub struct $name {
-            address: ApAddress,
+            address: $crate::architecture::arm::ap::ApAddress,
         }
 
         impl $name {
             #[doc = concat!("Creates a new ", stringify!($name), " with `address` as base address.")]
-            pub const fn new(address: ApAddress) -> Self {
+            pub const fn new(address: $crate::architecture::arm::ap::ApAddress) -> Self {
                 Self { address }
             }
         }
 
-        impl AccessPort for $name {
-            fn ap_address(&self) -> ApAddress {
+        impl $crate::architecture::arm::ap::AccessPort for $name {
+            fn ap_address(&self) -> $crate::architecture::arm::ap::ApAddress {
                 self.address
             }
         }

@@ -1,5 +1,5 @@
-use crate::architecture::arm::ap::v1::{AddressIncrement, DataSize, MemoryAp, CSW, DRW, TAR, TAR2};
-use crate::architecture::arm::ap::{AccessPortError, ApAccess, ApRegister};
+use crate::architecture::arm::ap::v1::{AddressIncrement, DataSize, CSW, DRW, TAR, TAR2};
+use crate::architecture::arm::ap::{AccessPortError, ApAccess, ApRegister, MemoryAp};
 use crate::architecture::arm::communication_interface::{FlushableArmAccess, SwdSequence};
 use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
@@ -681,7 +681,7 @@ mod tests {
     use crate::architecture::arm::{ap::AccessPort, ApAddress, DpAddress, MemoryApInformation};
 
     use super::super::super::ap::v1::memory_ap::mock::MockMemoryAp;
-    use super::super::super::ap::v1::memory_ap::MemoryAp;
+    use super::super::super::ap::MemoryAp;
     use super::ADIMemoryInterface;
     use super::ArmProbe;
 

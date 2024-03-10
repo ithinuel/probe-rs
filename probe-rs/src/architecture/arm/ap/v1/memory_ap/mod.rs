@@ -2,48 +2,14 @@
 
 pub(crate) mod mock;
 
-use super::{ApAccess, GenericAp};
-use crate::architecture::arm::ap::{AccessPort, ApRegister, Register};
+use crate::architecture::arm::ap::{
+    AccessPort, ApAccess, ApRegister, GenericAp, MemoryAp, Register,
+};
 use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress, ArmError};
+use crate::define_ap_register;
+
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
-
-define_ap!(
-    /// Memory AP
-    ///
-    /// The memory AP can be used to access a memory-mapped
-    /// set of debug resources of the attached system.
-    MemoryAp
-);
-
-impl MemoryAp {
-    /// The base address of this AP which is used to then access all relative control registers.
-    pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, ArmError>
-    where
-        A: ApAccess,
-    {
-        let base_register: BASE = interface.read_ap_register(*self)?;
-
-        let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
-            let base2: BASE2 = interface.read_ap_register(*self)?;
-
-            u64::from(base2.BASEADDR) << 32
-        } else {
-            0
-        };
-        base_address |= u64::from(base_register.BASEADDR << 12);
-
-        Ok(base_address)
-    }
-}
-
-impl From<GenericAp> for MemoryAp {
-    fn from(other: GenericAp) -> Self {
-        MemoryAp {
-            address: other.ap_address(),
-        }
-    }
-}
 
 /// The unit of data that is transferred in one transfer via the DRW commands.
 ///

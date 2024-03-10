@@ -6,8 +6,53 @@ use super::{
 use crate::architecture::arm::dp::DebugPortError;
 use crate::probe::DebugProbeError;
 
+pub mod register_generation;
+
 pub mod v1;
 pub mod v2;
+
+crate::define_ap!(
+    /// A generic access port which implements just the register every access port has to implement
+    /// to be compliant with the ADI 5.2 specification.
+    GenericAp
+);
+
+crate::define_ap!(
+    /// Memory AP
+    ///
+    /// The memory AP can be used to access a memory-mapped
+    /// set of debug resources of the attached system.
+    MemoryAp
+);
+
+impl MemoryAp {
+    /// The base address of this AP which is used to then access all relative control registers.
+    pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, ArmError>
+    where
+        A: ApAccess,
+    {
+        let base_register: v1::BASE = interface.read_ap_register(*self)?;
+
+        let mut base_address = if v1::memory_ap::BaseAddrFormat::ADIv5 == base_register.Format {
+            let base2: v1::BASE2 = interface.read_ap_register(*self)?;
+
+            u64::from(base2.BASEADDR) << 32
+        } else {
+            0
+        };
+        base_address |= u64::from(base_register.BASEADDR << 12);
+
+        Ok(base_address)
+    }
+}
+
+impl From<GenericAp> for MemoryAp {
+    fn from(other: GenericAp) -> Self {
+        MemoryAp {
+            address: other.ap_address(),
+        }
+    }
+}
 
 /// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]

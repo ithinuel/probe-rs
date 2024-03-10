@@ -8,8 +8,8 @@ use std::{
 use crate::{
     architecture::arm::{
         ap::{
-            v1::{MemoryAp, DRW, TAR},
-            AccessPortError, ApAccess,
+            v1::memory_ap::{DRW, TAR},
+            AccessPortError, ApAccess, MemoryAp,
         },
         communication_interface::Initialized,
         core::armv7m::{Aircr, Dhcsr},

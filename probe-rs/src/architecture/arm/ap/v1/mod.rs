@@ -1,17 +1,17 @@
 //! Access port v1 specific types and methods.
 
-#[macro_use]
-pub mod register_generation;
 pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
-pub use generic_ap::{ApClass, ApType, GenericAp, IDR};
+pub use generic_ap::IDR;
 pub use memory_ap::{
-    AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CFG, CSW, DRW, TAR, TAR2,
+    AddressIncrement, BaseaddrFormat, DataSize, BASE, BASE2, CFG, CSW, DRW, TAR, TAR2,
 };
 
 use crate::architecture::arm::{
-    ap::{AccessPort, ApAccess},
+    ap::{
+        v1::generic_ap::ApClass, v1::generic_ap::ApType, AccessPort, ApAccess, GenericAp, MemoryAp,
+    },
     ApAddress, DpAddress,
 };
 

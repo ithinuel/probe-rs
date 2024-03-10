@@ -13,8 +13,8 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ap::v1::MemoryAp, component::TraceSink, memory::CoresightComponent,
-    sequences::ArmDebugSequence, ArmError, ArmProbe, ArmProbeInterface,
+    ap::MemoryAp, component::TraceSink, memory::CoresightComponent, sequences::ArmDebugSequence,
+    ArmError, ArmProbe, ArmProbeInterface,
 };
 
 /// Marker structure for most ARMv7 STM32 devices.

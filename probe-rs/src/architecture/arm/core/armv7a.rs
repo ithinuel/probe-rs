@@ -998,7 +998,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
 mod test {
     use crate::{
         architecture::arm::{
-            ap::v1::MemoryAp, communication_interface::SwdSequence, sequences::DefaultArmSequence,
+            ap::MemoryAp, communication_interface::SwdSequence, sequences::DefaultArmSequence,
         },
         probe::DebugProbeError,
     };

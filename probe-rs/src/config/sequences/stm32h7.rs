@@ -5,7 +5,7 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ap::v1::MemoryAp,
+    ap::MemoryAp,
     component::{TraceFunnel, TraceSink},
     memory::{romtable::RomTableError, CoresightComponent, PeripheralType},
     sequences::ArmDebugSequence,
