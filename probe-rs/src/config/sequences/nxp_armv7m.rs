@@ -10,13 +10,13 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPortError, ApAccess, CSW},
+        ap::{AccessPortError, ApAccess, v1::CSW},
         armv7m::{FpCtrl, FpRev2CompX},
         core::{
             armv7m::{Aircr, Dhcsr},
             registers::cortex_m::PC,
         },
-        memory::adi_v5_memory_interface::ArmProbe,
+        ArmProbe,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
         ArmError,
     },

@@ -26,11 +26,8 @@ use super::{
     component::{TraceFunnel, TraceSink},
     core::cortex_m::Dhcsr,
     dp::{Abort, Ctrl, DebugPortError, DpAccess, Select, DPIDR},
-    memory::{
-        adi_v5_memory_interface::ArmProbe,
-        romtable::{CoresightComponent, PeripheralType},
-    },
-    ArmCommunicationInterface, ArmError, DpAddress, Pins, PortType, Register,
+    memory::romtable::{CoresightComponent, PeripheralType},
+    ArmCommunicationInterface, ArmError, ArmProbe, DpAddress, Pins, PortType, Register,
 };
 
 /// An error occurred when executing an ARM debug sequence

@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::ap::AccessPort;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmError;
+use crate::architecture::arm::ArmProbe;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
 };
@@ -25,24 +25,10 @@ impl Nrf9160 {
 impl Nrf for Nrf9160 {
     fn core_aps(&self, memory: &mut dyn ArmProbe) -> Vec<(ApAddress, ApAddress)> {
         let ap_address = memory.ap().ap_address();
-
-        let core_aps = [(0, 4)];
-
-        core_aps
-            .into_iter()
-            .map(|(core_ahb_ap, core_ctrl_ap)| {
-                (
-                    ApAddress {
-                        ap: core_ahb_ap,
-                        ..ap_address
-                    },
-                    ApAddress {
-                        ap: core_ctrl_ap,
-                        ..ap_address
-                    },
-                )
-            })
-            .collect()
+        vec![(
+            ApAddress::apv1_with_dp(ap_address.dp, 0),
+            ApAddress::apv1_with_dp(ap_address.dp, 4),
+        )]
     }
 
     fn is_core_unlocked(

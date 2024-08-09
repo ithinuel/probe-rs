@@ -204,10 +204,7 @@ impl CortexAState {
 /// It will reflect the core status to the probe/memory interface if
 /// the status has changed, and will replace `current_status` with
 /// `new_status`.
-pub fn update_core_status<
-    P: super::memory::adi_v5_memory_interface::ArmProbe + ?Sized,
-    T: core::ops::DerefMut<Target = P>,
->(
+pub fn update_core_status<P: super::ArmProbe + ?Sized, T: core::ops::DerefMut<Target = P>>(
     probe: &mut T,
     current_status: &mut CoreStatus,
     new_status: CoreStatus,

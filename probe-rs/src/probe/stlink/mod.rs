@@ -4,20 +4,21 @@ mod constants;
 mod tools;
 mod usb_interface;
 
-use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
-use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
+use usb_interface::{StLinkUsb, StLinkUsbDevice};
+
+use crate::architecture::arm::ApPort;
+use crate::probe::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::{
     architecture::arm::{
-        ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
+        ap::{v1::valid_access_ports, v1::ApClass, v1::IDR, MemoryAp},
+        ap::{AccessPort, ApAccess},
         communication_interface::{
             ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
         },
         memory::Component,
         sequences::ArmDebugSequence,
-        ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
-        SwoMode,
+        valid_32bit_arm_address, ApAddress, ApInformation, ArmChipInfo, ArmError, ArmProbe,
+        DapAccess, DpAddress, Pins, SwoAccess, SwoConfig, SwoMode,
     },
     probe::{DebugProbeInfo, DebugProbeSelector, Probe, ProbeFactory},
     Error as ProbeRsError,
@@ -830,7 +831,7 @@ impl<D: StLinkUsb> StLink<D> {
     }
 
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: u16, addr: u8) -> Result<u32, DebugProbeError> {
+    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, DebugProbeError> {
         if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
             tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
             return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
@@ -847,7 +848,7 @@ impl<D: StLinkUsb> StLink<D> {
             commands::JTAG_READ_DAP_REG,
             port[0],
             port[1],
-            addr,
+            addr as u8,
             0, // Maximum address for DAP registers is 0xFC
         ];
         let mut buf = [0; 8];
@@ -857,7 +858,7 @@ impl<D: StLinkUsb> StLink<D> {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: u16, addr: u8, value: u32) -> Result<(), DebugProbeError> {
+    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), DebugProbeError> {
         if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
             tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
             return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
@@ -875,7 +876,7 @@ impl<D: StLinkUsb> StLink<D> {
             commands::JTAG_WRITE_DAP_REG,
             port[0],
             port[1],
-            addr,
+            addr as u8,
             0, // Maximum address for DAP registers is 0xFC
             bytes[0],
             bytes[1],
@@ -1430,7 +1431,7 @@ impl StlinkArmDebug {
 
 impl DapAccess for StlinkArmDebug {
     #[tracing::instrument(skip(self), fields(value))]
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
+    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u16) -> Result<u32, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1447,7 +1448,7 @@ impl DapAccess for StlinkArmDebug {
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
-        address: u8,
+        address: u16,
         value: u32,
     ) -> Result<(), ArmError> {
         if dp != DpAddress::Default {
@@ -1458,12 +1459,15 @@ impl DapAccess for StlinkArmDebug {
         Ok(())
     }
 
-    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, ArmError> {
+    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u16) -> Result<u32, ArmError> {
         if ap.dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
+        let ApPort::Index(ap) = ap.ap else {
+            return Err(DebugProbeError::APv2NotSupported.into());
+        };
 
-        let value = self.probe.read_register(ap.ap as u16, address)?;
+        let value = self.probe.read_register(ap as u16, address)?;
 
         Ok(value)
     }
@@ -1471,14 +1475,17 @@ impl DapAccess for StlinkArmDebug {
     fn write_raw_ap_register(
         &mut self,
         ap: ApAddress,
-        address: u8,
+        address: u16,
         value: u32,
     ) -> Result<(), ArmError> {
         if ap.dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
+        let ApPort::Index(ap) = ap.ap else {
+            return Err(DebugProbeError::APv2NotSupported.into());
+        };
 
-        self.probe.write_register(ap.ap as u16, address, value)?;
+        self.probe.write_register(ap as u16, address, value)?;
 
         Ok(())
     }
@@ -1506,8 +1513,11 @@ impl ArmProbeInterface for StlinkArmDebug {
         if addr.dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
+        let ApPort::Index(ap) = addr.ap else {
+            return Err(DebugProbeError::APv2NotSupported.into());
+        };
 
-        match self.ap_information.get(addr.ap as usize) {
+        match self.ap_information.get(ap as usize) {
             Some(res) => Ok(res),
             None => Err(ArmError::ApDoesNotExist(addr)),
         }
@@ -1548,12 +1558,12 @@ impl ArmProbeInterface for StlinkArmDebug {
         Ok(None)
     }
 
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {
+    fn access_ports(&mut self, dp: DpAddress) -> Result<Vec<ApInformation>, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
-        Ok(self.ap_information.len())
+        Ok(self.ap_information.clone())
     }
 
     fn close(self: Box<Self>) -> Probe {
@@ -1629,12 +1639,13 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
         for (i, d) in data.iter_mut().enumerate() {
             let mut buff = vec![0u8; 8];
+            let ApPort::Index(ap) = self.current_ap.ap_address().ap else {
+                return Err(DebugProbeError::APv2NotSupported.into());
+            };
 
-            self.probe.probe.read_mem_32bit(
-                address + (i * 8) as u32,
-                &mut buff,
-                self.current_ap.ap_address().ap,
-            )?;
+            self.probe
+                .probe
+                .read_mem_32bit(address + (i * 8) as u32, &mut buff, ap)?;
 
             *d = u64::from_le_bytes(buff.try_into().unwrap());
         }
@@ -1644,6 +1655,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+        let ApPort::Index(ap) = self.current_ap.ap_address().ap else {
+            return Err(DebugProbeError::APv2NotSupported.into());
+        };
 
         // Read needs to be chunked into chunks with appropiate max length (see STLINK_MAX_READ_LEN).
         for (index, chunk) in data.chunks_mut(STLINK_MAX_READ_LEN / 4).enumerate() {
@@ -1652,7 +1666,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.read_mem_32bit(
                 address + (index * STLINK_MAX_READ_LEN) as u32,
                 &mut buff,
-                self.current_ap.ap_address().ap,
+                ap,
             )?;
 
             for (index, word) in buff.chunks_exact(4).enumerate() {
@@ -1665,6 +1679,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+        let ApPort::Index(ap) = self.current_ap.ap_address().ap else {
+            return Err(DebugProbeError::APv2NotSupported.into());
+        };
 
         // Read needs to be chunked into chunks of appropriate max length of the probe
         // use half the limits of 8bit accesses to be conservative. TODO can we increase this?
@@ -1679,7 +1696,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.read_mem_16bit(
                 address + (index * chunk_size) as u32,
                 &mut buff,
-                self.current_ap.ap_address().ap,
+                ap,
             )?;
 
             for (index, word) in buff.chunks_exact(2).enumerate() {
@@ -1692,6 +1709,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+        let ApPort::Index(ap) = self.current_ap.ap_address().ap else {
+            return Err(DebugProbeError::APv2NotSupported.into());
+        };
 
         // Read needs to be chunked into chunks of appropriate max length of the probe
         let chunk_size = if self.probe.probe.hw_version < 3 {
@@ -1708,7 +1728,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             chunk.copy_from_slice(&self.probe.probe.read_mem_8bit(
                 address + (index * chunk_size) as u32,
                 chunk.len() as u16,
-                self.current_ap.ap_address().ap,
+                ap,
             )?);
         }
 
@@ -1717,6 +1737,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+        let ApPort::Index(ap) = self.current_ap.ap_address().ap else {
+            return Err(DebugProbeError::APv2NotSupported.into());
+        };
 
         let mut tx_buffer = vec![0u8; data.len() * 8];
 
@@ -1732,7 +1755,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.write_mem_32bit(
                 address + (index * STLINK_MAX_WRITE_LEN) as u32,
                 chunk,
-                self.current_ap.ap_address().ap,
+                ap,
             )?;
         }
 
@@ -1741,6 +1764,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+        let ApPort::Index(ap) = self.current_ap.ap_address().ap else {
+            return Err(DebugProbeError::APv2NotSupported.into());
+        };
 
         let mut tx_buffer = vec![0u8; data.len() * 4];
 
@@ -1756,7 +1782,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.write_mem_32bit(
                 address + (index * STLINK_MAX_WRITE_LEN) as u32,
                 chunk,
-                self.current_ap.ap_address().ap,
+                ap,
             )?;
         }
 
@@ -1765,6 +1791,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+        let ApPort::Index(ap) = self.current_ap.ap_address().ap else {
+            return Err(DebugProbeError::APv2NotSupported.into());
+        };
 
         let mut tx_buffer = vec![0u8; data.len() * 2];
 
@@ -1787,7 +1816,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.write_mem_16bit(
                 address + (index * STLINK_MAX_WRITE_LEN) as u32,
                 chunk,
-                self.current_ap.ap_address().ap,
+                ap,
             )?;
         }
 
@@ -1796,6 +1825,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+        let ApPort::Index(ap) = self.current_ap.ap_address().ap else {
+            return Err(DebugProbeError::APv2NotSupported.into());
+        };
 
         // The underlying STLink command is limited to a single USB frame at a time
         // so we must manually chunk it into multiple command if it exceeds
@@ -1809,9 +1841,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         // If we write less than 64 bytes, just write it directly
         if data.len() < chunk_size {
             tracing::trace!("write_8: small - direct 8 bit write to {:08x}", address);
-            self.probe
-                .probe
-                .write_mem_8bit(address, data, self.current_ap.ap_address().ap)?;
+            self.probe.probe.write_mem_8bit(address, data, ap)?;
         } else {
             // Handle unaligned data in the beginning.
             let bytes_beginning = if address % 4 == 0 {
@@ -1828,11 +1858,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                     bytes_beginning,
                     current_address,
                 );
-                self.probe.probe.write_mem_8bit(
-                    current_address,
-                    &data[..bytes_beginning],
-                    self.current_ap.ap_address().ap,
-                )?;
+                self.probe
+                    .probe
+                    .write_mem_8bit(current_address, &data[..bytes_beginning], ap)?;
 
                 current_address += bytes_beginning as u32;
             }
@@ -1855,7 +1883,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                 self.probe.probe.write_mem_32bit(
                     current_address + (index * STLINK_MAX_WRITE_LEN) as u32,
                     chunk,
-                    self.current_ap.ap_address().ap,
+                    ap,
                 )?;
             }
 
@@ -1869,11 +1897,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                     bytes_beginning,
                     current_address,
                 );
-                self.probe.probe.write_mem_8bit(
-                    current_address,
-                    remaining_bytes,
-                    self.current_ap.ap_address().ap,
-                )?;
+                self.probe
+                    .probe
+                    .write_mem_8bit(current_address, remaining_bytes, ap)?;
             }
         }
         Ok(())

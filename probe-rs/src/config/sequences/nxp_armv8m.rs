@@ -8,13 +8,16 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPort, ApAccess, GenericAp, MemoryAp, CSW, IDR},
+        ap::{
+            v1::{CSW, IDR},
+            AccessPort, ApAccess, GenericAp, MemoryAp,
+        },
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-        memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence,
-        ApAddress, ArmCommunicationInterface, ArmError, DapAccess, DpAddress, Pins,
+        ApAddress, ApPort, ArmCommunicationInterface, ArmError, ArmProbe, DapAccess, DpAddress,
+        Pins,
     },
     core::MemoryMappedRegister,
 };
@@ -326,7 +329,10 @@ fn enable_debug_mailbox(
 ) -> Result<(), ArmError> {
     tracing::info!("LPC55xx connect script start");
 
-    let ap = ApAddress { dp, ap: 2 };
+    let ap = ApAddress {
+        dp,
+        ap: ApPort::Index(2),
+    };
 
     let status: IDR = interface.read_ap_register(GenericAp::new(ap))?;
 
@@ -539,7 +545,10 @@ impl MIMXRT5xxS {
 
         tracing::debug!("enabling MIMXRT5xxS DebugMailbox");
 
-        let ap_addr = ApAddress { dp, ap: 2 };
+        let ap_addr = ApAddress {
+            dp,
+            ap: ApPort::Index(2),
+        };
 
         // CMSIS Pack implementation reads APIDR and DPIDR and passes each
         // to the "Message" function, but otherwise does nothing with those
@@ -567,9 +576,9 @@ impl ArmDebugSequence for MIMXRT5xxS {
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
-        const SW_DP_ABORT: u8 = 0x0;
-        const DP_CTRL_STAT: u8 = 0x4;
-        const DP_SELECT: u8 = 0x8;
+        const SW_DP_ABORT: u16 = 0x0;
+        const DP_CTRL_STAT: u16 = 0x4;
+        const DP_SELECT: u16 = 0x8;
 
         tracing::trace!("MIMXRT5xxS debug port start");
 
@@ -609,7 +618,10 @@ impl ArmDebugSequence for MIMXRT5xxS {
             // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
             interface.write_raw_dp_register(dp, SW_DP_ABORT, 0x0000001E)?;
 
-            let ap = ApAddress { dp, ap: 0 };
+            let ap = ApAddress {
+                dp,
+                ap: ApPort::Index(0),
+            };
             let mem_ap = MemoryAp::new(ap);
             self.enable_debug_mailbox(interface, dp, mem_ap)?;
         }

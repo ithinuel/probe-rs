@@ -7,7 +7,7 @@ use crate::architecture::arm::{
     component::TraceSink,
     memory::CoresightComponent,
     sequences::{ArmDebugSequence, ArmDebugSequenceError},
-    ApAddress, ArmError, ArmProbeInterface, DpAddress,
+    ApAddress, ApPort, ArmError, ArmProbeInterface, DpAddress,
 };
 use crate::session::MissingPermissions;
 
@@ -23,10 +23,10 @@ pub enum ComponentError {
     NordicNoTraceMem,
 }
 
-const RESET: u8 = 0x00;
-const ERASEALL: u8 = 0x04;
-const ERASEALLSTATUS: u8 = 0x08;
-const APPROTECTSTATUS: u8 = 0x0C;
+const RESET: u16 = 0x00;
+const ERASEALL: u16 = 0x04;
+const ERASEALLSTATUS: u16 = 0x08;
+const APPROTECTSTATUS: u16 = 0x0C;
 
 /// Marker struct indicating initialization sequencing for nRF52 family parts.
 #[derive(Debug)]
@@ -49,7 +49,7 @@ impl Nrf52 {
 }
 
 mod clock {
-    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError};
+    use crate::architecture::arm::{ArmError, ArmProbe};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component
@@ -91,7 +91,7 @@ impl ArmDebugSequence for Nrf52 {
         permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         let ctrl_ap = ApAddress {
-            ap: 1,
+            ap: ApPort::Index(1),
             dp: DpAddress::Default,
         };
 

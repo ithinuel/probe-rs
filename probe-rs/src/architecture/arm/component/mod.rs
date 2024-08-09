@@ -8,17 +8,20 @@ mod tmc;
 mod tpiu;
 mod trace_funnel;
 
-use super::ap::{GenericAp, MemoryAp};
-use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
-use super::memory::Component;
-use super::ArmError;
-use super::{ApAddress, ApInformation, DpAddress, MemoryApInformation};
-use crate::architecture::arm::core::armv6m::Demcr;
-use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
+use super::{
+    ap::MemoryAp,
+    core::armv6m::Demcr,
+    memory::{
+        romtable::{CoresightComponent, PeripheralType, RomTableError},
+        Component,
+    },
+    ApAddress, ApInformation, ArmError, ArmProbeInterface, DpAddress, MemoryApInformation,
+    SwoConfig, SwoMode,
+};
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
 
-pub use self::itm::Itm;
 pub use dwt::Dwt;
+pub use itm::Itm;
 pub use scs::Scs;
 pub use swo::Swo;
 pub use tmc::TraceMemoryController;
@@ -109,11 +112,7 @@ pub fn get_arm_components(
 ) -> Result<Vec<CoresightComponent>, ArmError> {
     let mut components = Vec::new();
 
-    for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
-        let ap_information = interface
-            .ap_information(GenericAp::new(ApAddress { dp, ap: ap_index }))?
-            .clone();
-
+    for (i, ap_information) in interface.access_ports(dp)?.into_iter().enumerate() {
         let component = match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {
                 debug_base_address: 0,
@@ -127,6 +126,12 @@ pub fn get_arm_components(
                 let ap = MemoryAp::new(address);
                 let mut memory = interface.memory_interface(ap)?;
                 let component = Component::try_parse(&mut *memory, debug_base_address)?;
+                Ok(CoresightComponent::new(component, ap))
+            }
+            ApInformation::ADIv6RootAP(base_ptr) => {
+                let ap = MemoryAp::new(ApAddress::apv2_with_dp(dp, base_ptr));
+                let mut memory = interface.memory_interface(ap)?;
+                let component = Component::try_parse(&mut *memory, 0)?;
                 Ok(CoresightComponent::new(component, ap))
             }
             ApInformation::Other { address, .. } => {
@@ -143,7 +148,7 @@ pub fn get_arm_components(
                 components.push(component);
             }
             Err(e) => {
-                tracing::info!("Not counting AP {} because of: {}", ap_index, e);
+                tracing::info!("Not counting AP {} because of: {}", i, e);
             }
         }
     }

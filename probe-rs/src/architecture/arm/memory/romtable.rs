@@ -1,7 +1,8 @@
-use super::adi_v5_memory_interface::ArmProbe;
 use super::AccessPortError;
 use crate::architecture::arm::ArmError;
-use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
+use crate::architecture::arm::{
+    ap::MemoryAp, communication_interface::ArmProbeInterface, ArmProbe,
+};
 use enum_primitive_derive::Primitive;
 use num_traits::cast::FromPrimitive;
 
@@ -241,11 +242,14 @@ impl RomTableEntry {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ComponentId {
     component_address: u64,
-    class: RawComponent,
+    class: ComponentClass,
     peripheral_id: PeripheralID,
 }
 
 impl ComponentId {
+    pub fn class(&self) -> ComponentClass {
+        self.class
+    }
     /// Retrieve the address of the component.
     pub fn component_address(&self) -> u64 {
         self.component_address
@@ -277,7 +281,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
     /// Reads the component class from a component information table.
     ///
     /// This function does a direct memory access and is meant for internal use only.
-    fn component_class(&mut self) -> Result<RawComponent, RomTableError> {
+    fn component_class(&mut self) -> Result<ComponentClass, RomTableError> {
         #![allow(clippy::verbose_bit_mask)]
         let mut cidr = [0u32; 4];
 
@@ -383,8 +387,8 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 /// Meant for internal parsing usage only.
 ///
 /// Described in table D1-2 in the ADIv5.2 spec.
-#[derive(Clone, Primitive, Debug, PartialEq)]
-enum RawComponent {
+#[derive(Clone, Copy, Primitive, Debug, PartialEq)]
+pub enum ComponentClass {
     GenericVerificationComponent = 0,
     RomTable = 1,
     CoreSightComponent = 9,
@@ -404,6 +408,10 @@ pub enum Component {
     Class1RomTable(ComponentId, RomTable),
     /// CoreSight component. For general information about CoreSight components, see the CoreSight Architecture Specification.
 
+    /// ROM Table. See also _ROM Table Types on page D1-285 of the ADIv6.0 specification_.
+    /// For detailed information about Class 0x9 ROM Tables, see _Chapter D3 Class 0x9 ROM Tables
+    /// of the ADIv6.0 specification_.
+    Class9RomTable(ComponentId, RomTable),
     /// A CoreSight component can be a Class 0x9 ROM Table, which can be identified from the DEVARCH.ARCHID having the value 0x0AF7. See also _ROM Table Types on page D2-237_. For detailed information about Class 0x9 ROM Tables, see _Chapter D4 Class 0x9 ROM Tables_.
     CoresightComponent(ComponentId),
     /// Peripheral Test Block.
@@ -438,18 +446,24 @@ impl Component {
         }
 
         let class = match component_id.class {
-            RawComponent::GenericVerificationComponent => {
+            ComponentClass::GenericVerificationComponent => {
                 Component::GenericVerificationComponent(component_id)
             }
-            RawComponent::RomTable => {
+            ComponentClass::RomTable => {
                 let rom_table = RomTable::try_parse(memory, component_id.component_address)?;
-
                 Component::Class1RomTable(component_id, rom_table)
             }
-            RawComponent::CoreSightComponent => Component::CoresightComponent(component_id),
-            RawComponent::PeripheralTestBlock => Component::PeripheralTestBlock(component_id),
-            RawComponent::GenericIPComponent => Component::GenericIPComponent(component_id),
-            RawComponent::CoreLinkOrPrimeCellOrSystemComponent => {
+            ComponentClass::CoreSightComponent => {
+                if component_id.peripheral_id.is_of_type(PeripheralType::Rom) {
+                    let rom_table = RomTable::try_parse(memory, component_id.component_address)?;
+                    Component::Class9RomTable(component_id, rom_table)
+                } else {
+                    Component::CoresightComponent(component_id)
+                }
+            }
+            ComponentClass::PeripheralTestBlock => Component::PeripheralTestBlock(component_id),
+            ComponentClass::GenericIPComponent => Component::GenericIPComponent(component_id),
+            ComponentClass::CoreLinkOrPrimeCellOrSystemComponent => {
                 Component::CoreLinkOrPrimeCellOrSystemComponent(component_id)
             }
         };
@@ -462,6 +476,7 @@ impl Component {
         match self {
             Component::GenericVerificationComponent(component_id) => component_id,
             Component::Class1RomTable(component_id, ..) => component_id,
+            Component::Class9RomTable(component_id, ..) => component_id,
             Component::CoresightComponent(component_id, ..) => component_id,
             Component::PeripheralTestBlock(component_id) => component_id,
             Component::GenericIPComponent(component_id) => component_id,
@@ -570,9 +585,11 @@ impl<'a> Iterator for CoresightComponentIter<'a> {
         if let Some(component) = self.components.get(self.current) {
             // If it has children, remember to iterate them next.
             self.children = match &component.component {
-                Component::Class1RomTable(_, v) => Some(Box::new(CoresightComponentIter::new(
-                    v.entries.iter().map(|v| &v.component).collect(),
-                ))),
+                Component::Class9RomTable(_, v) | Component::Class1RomTable(_, v) => {
+                    Some(Box::new(CoresightComponentIter::new(
+                        v.entries.iter().map(|v| &v.component).collect(),
+                    )))
+                }
                 _ => None,
             };
             // Advance the pointer by one.
@@ -688,6 +705,7 @@ impl PeripheralID {
             ("ARM Ltd", 0x001, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 ITM", PeripheralType::Itm)),
             ("ARM Ltd", 0x002, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 DWT", PeripheralType::Dwt)),
             ("ARM Ltd", 0x003, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 FBP", PeripheralType::Fbp)),
+            (_, 0x004, 0x00, 0x0AF7) => Some(PartInfo::new("CS-600 ROM", PeripheralType::Rom)),
             ("ARM Ltd", 0x008, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0x00A, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 DWT", PeripheralType::Dwt)),
             ("ARM Ltd", 0x00B, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 BPU", PeripheralType::Bpu)),
@@ -695,6 +713,7 @@ impl PeripheralID {
             ("ARM Ltd", 0x00D, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM11", PeripheralType::Etm)),
             ("ARM Ltd", 0x00E, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M7 FBP", PeripheralType::Fbp)),
             ("ARM Ltd", 0x101, 0x00, 0x0000) => Some(PartInfo::new("System TSGEN", PeripheralType::Tsgen)),
+            ("ARM Ltd", 0x193, 0x00, 0x0000) => Some(PartInfo::new("CS-600 TSGEN", PeripheralType::Tsgen)),
             ("ARM Ltd", 0x471, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0  ROM", PeripheralType::Rom)),
             ("ARM Ltd", 0x4C0, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0+ ROM", PeripheralType::Rom)),
             ("ARM Ltd", 0x4C4, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M4 ROM", PeripheralType::Rom)),
@@ -714,6 +733,10 @@ impl PeripheralID {
             ("ARM Ltd", 0x975, 0x13, 0x4a13) => Some(PartInfo::new("Cortex-M7 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0x9A1, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M4 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x9A9, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M7 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x9E3, 0x00, 0x0A17) => Some(PartInfo::new("CS-600 AHB5-AP", PeripheralType::Ap)),
+            ("ARM Ltd", 0x9E7, 0x11, 0x0000) => Some(PartInfo::new("CS-600 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x9EB, 0x12, 0x0000) => Some(PartInfo::new("CS-600 APB Funnel", PeripheralType::TraceFunnel)),
+            ("ARM Ltd", 0x9ED, 0x14, 0x1A14) => Some(PartInfo::new("CS-600 CTI", PeripheralType::Cti)),
             ("ARM Ltd", 0xD20, 0x00, 0x2A04) => Some(PartInfo::new("Cortex-M23 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0xD20, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M23 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
@@ -803,6 +826,8 @@ pub enum PeripheralType {
     Mtb,
     /// Cross Trigger Interface
     Cti,
+    /// Access Port
+    Ap,
 }
 
 impl std::fmt::Display for PeripheralType {
@@ -824,6 +849,7 @@ impl std::fmt::Display for PeripheralType {
             PeripheralType::Tmc => write!(f, "Tmc (Trace Memory Controller)"),
             PeripheralType::Mtb => write!(f, "MTB (Micro Trace Buffer)"),
             PeripheralType::Cti => write!(f, "CTI (Cross Trigger Interface)"),
+            PeripheralType::Ap => write!(f, "AP (Access Port)"),
         }
     }
 }

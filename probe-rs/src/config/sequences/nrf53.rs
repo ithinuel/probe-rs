@@ -3,10 +3,10 @@
 use std::sync::Arc;
 
 use super::nrf::Nrf;
-use crate::architecture::arm::ap::{AccessPort, CSW};
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::ap::{v1::CSW, AccessPort};
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmError;
+use crate::architecture::arm::ArmProbe;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
 };
@@ -32,14 +32,8 @@ impl Nrf for Nrf5340 {
             .into_iter()
             .map(|(core_ahb_ap, core_ctrl_ap)| {
                 (
-                    ApAddress {
-                        ap: core_ahb_ap,
-                        ..ap_address
-                    },
-                    ApAddress {
-                        ap: core_ctrl_ap,
-                        ..ap_address
-                    },
+                    ApAddress::apv1_with_dp(ap_address.dp, core_ahb_ap),
+                    ApAddress::apv1_with_dp(ap_address.dp, core_ctrl_ap),
                 )
             })
             .collect()

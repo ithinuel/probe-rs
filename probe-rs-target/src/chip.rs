@@ -132,11 +132,25 @@ pub enum CoreAccessOptions {
     Xtensa(XtensaCoreAccessOptions),
 }
 
+/// The access port’s version
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+pub enum ApVersion {
+    /// Access Port version 1 (ADIv5)
+    #[default]
+    #[serde(rename = "1")]
+    APv1,
+    /// Access Port version 2 (ADIv6)
+    #[serde(rename = "2")]
+    APv2,
+}
+
 /// The data required to access an ARM core
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ArmCoreAccessOptions {
+    /// The access port version. Should default to APv1 if omitted.
+    pub ap_version: Option<ApVersion>,
     /// The access port number to access the core
-    pub ap: u8,
+    pub ap: u64,
     /// The port select number to access the core
     pub psel: u32,
     /// The base address of the debug registers for the core.

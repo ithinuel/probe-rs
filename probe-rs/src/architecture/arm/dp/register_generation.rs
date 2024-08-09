@@ -3,38 +3,32 @@
 /// Defines a new debug port register for typed access.
 macro_rules! define_dp_register {
     (
-        $(#[$outer:meta])*
-        $name:ident,
+        $type:ident,
+        $version:ident,
         $address:expr,
-        [$(($field:ident: $type:ty)$(,)?)*],
-        $param:ident,
-        $from:expr,
-        $to:expr
-    )
-    => {
-        $(#[$outer])*
-        #[allow(non_snake_case)]
-        #[derive(Debug, Default, Clone, Copy)]
-        pub struct $name {
-            $(pub $field: $type,)*
-        }
+        $name:expr
+    ) => {
+        impl TryFrom<u32> for $type {
+            type Error = RegisterParseError;
 
-        impl Register for $name {
-            // ADDRESS is always the lower 4 bits of the register address
-            const ADDRESS: u8 = $address;
-            const NAME: &'static str = stringify!($name);
-        }
-
-        impl From<u32> for $name {
-            fn from($param: u32) -> $name {
-                $from
+            fn try_from(raw: u32) -> Result<Self, Self::Error> {
+                Ok($type(raw))
             }
         }
 
-        impl From<$name> for u32 {
-            fn from($param: $name) -> u32 {
-                $to
+        impl From<$type> for u32 {
+            fn from(raw: $type) -> Self {
+                raw.0
             }
         }
-    }
+
+        impl DpRegister for $type {
+            const VERSION: DebugPortVersion = DebugPortVersion::$version;
+        }
+
+        impl Register for $type {
+            const ADDRESS: u16 = $address;
+            const NAME: &'static str = $name;
+        }
+    };
 }

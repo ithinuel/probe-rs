@@ -3,7 +3,7 @@ use crate::{
         arm::{
             ap::MemoryAp,
             core::{CortexAState, CortexMState},
-            ApAddress, ArmProbeInterface, DpAddress,
+            ApAddress, ApPort, ArmProbeInterface, DpAddress,
         },
         riscv::{
             communication_interface::{RiscvCommunicationInterface, RiscvError},
@@ -15,6 +15,7 @@ use crate::{
 };
 
 use super::ResolvedCoreOptions;
+use probe_rs_target::ApVersion;
 
 #[derive(Debug)]
 pub(crate) struct CombinedCoreState {
@@ -266,7 +267,16 @@ impl CoreState {
             x => DpAddress::Multidrop(x),
         };
 
-        let ap = ApAddress { dp, ap: options.ap };
+        let ap_version = options
+            .ap_version
+            .unwrap_or(ApVersion::APv1);
+        let ap = ApAddress {
+            dp,
+            ap: match ap_version {
+                ApVersion::APv1 => ApPort::Index(options.ap as u8),
+                ApVersion::APv2 => ApPort::Address(options.ap),
+            },
+        };
 
         MemoryAp::new(ap)
     }

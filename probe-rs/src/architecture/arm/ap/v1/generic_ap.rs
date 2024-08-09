@@ -1,7 +1,9 @@
 //! Generic access port
 
-use super::{AccessPort, ApRegister, Register};
-use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress};
+use crate::{
+    architecture::arm::{ap::GenericAp, communication_interface::RegisterParseError},
+    define_ap_register,
+};
 use enum_primitive_derive::Primitive;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 
@@ -27,25 +29,19 @@ pub enum ApType {
     JtagComAp = 0x0,
     /// A AMBA based AHB3 AP (see E1.5).
     AmbaAhb3 = 0x1,
-    /// A AMBA based AHB2 and AHB3 AP (see E1.8).
-    AmbaAhb2Ahb3 = 0x2,
-    /// A AMBA based AXI3 and AXI4 AP (see E1.2).
+    /// A AMBA based APB2 and APB3 AP (see E1.8).
+    AmbaApb2Apb3 = 0x2,
+    /// A AMBA based AXI3 and AXI4 (with optional ACE-Lite) AP (see E1.2 and E1.3).
     AmbaAxi3Axi4 = 0x4,
     /// A AMBA based AHB5 AP (see E1.6).
     AmbaAhb5 = 0x5,
-    /// A AMBA based AHB4 AP (see E1.3).
-    AmbaAhb4 = 0x6,
+    /// A AMBA based APB4 and APB5 AP (see E1.9).
+    AmbaApb4Apb5 = 0x6,
     /// A AMBA based AXI5 AP (see E1.4).
     AmbaAxi5 = 0x7,
     /// A AMBA based protected AHB5 AP (see E1.7).
     AmbaAhb5Hprot = 0x8,
 }
-
-define_ap!(
-    /// A generic access port which implements just the register every access port has to implement
-    /// to be compliant with the ADI 5.2 specification.
-    GenericAp
-);
 
 define_ap_register!(
     type: GenericAp,

@@ -2,47 +2,16 @@
 
 pub(crate) mod mock;
 
-use super::{AccessPort, ApAccess, ApRegister, GenericAp, Register};
-use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress, ArmError};
+use crate::{
+    architecture::arm::{
+        ap::{ApRegister, MemoryAp},
+        communication_interface::RegisterParseError,
+    },
+    define_ap_register,
+};
+
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
-
-define_ap!(
-    /// Memory AP
-    ///
-    /// The memory AP can be used to access a memory-mapped
-    /// set of debug resources of the attached system.
-    MemoryAp
-);
-
-impl MemoryAp {
-    /// The base address of this AP which is used to then access all relative control registers.
-    pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, ArmError>
-    where
-        A: ApAccess,
-    {
-        let base_register: BASE = interface.read_ap_register(*self)?;
-
-        let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
-            let base2: BASE2 = interface.read_ap_register(*self)?;
-
-            u64::from(base2.BASEADDR) << 32
-        } else {
-            0
-        };
-        base_address |= u64::from(base_register.BASEADDR << 12);
-
-        Ok(base_address)
-    }
-}
-
-impl From<GenericAp> for MemoryAp {
-    fn from(other: GenericAp) -> Self {
-        MemoryAp {
-            address: other.ap_address(),
-        }
-    }
-}
 
 /// The unit of data that is transferred in one transfer via the DRW commands.
 ///
@@ -133,8 +102,6 @@ define_ap_register!(
     fields: [
         /// The base address of this access point.
         BASEADDR: u32,
-        /// Reserved.
-        _RES0: u8,
         /// The base address format of this access point.
         Format: BaseaddrFormat,
         /// Does this access point exists?
@@ -143,7 +110,6 @@ define_ap_register!(
     ],
     from: value => Ok(BASE {
         BASEADDR: (value & 0xFFFF_F000) >> 12,
-        _RES0: 0,
         Format: match ((value >> 1) & 0x01) as u8 {
             0 => BaseaddrFormat::Legacy,
             1 => BaseaddrFormat::ADIv5,
@@ -157,7 +123,6 @@ define_ap_register!(
     }),
    to: value =>
         (value.BASEADDR << 12)
-        // _RES0
         | (u32::from(value.Format as u8) << 1)
         | u32::from(value.present)
 );
@@ -322,13 +287,11 @@ define_ap_register!(
     | (u32::from(value.CACHE      ) << 24)
     | (u32::from(value.SPIDEN     ) << 23)
     | (u32::from(value.MTE        ) << 15)
-    //  value._RES0
     | (u32::from(value.Type       ) << 12)
     | (u32::from(value.Mode       ) <<  8)
     | (u32::from(value.TrinProg   ) <<  7)
     | (u32::from(value.DeviceEn   ) <<  6)
     | (u32::from(value.AddrInc as u8) <<  4)
-    //  value._RES1
     // unwrap() is safe!
     | value.SIZE.to_u32().unwrap()
 );

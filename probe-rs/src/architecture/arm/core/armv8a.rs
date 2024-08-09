@@ -10,8 +10,7 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        core::armv8a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
-        sequences::ArmDebugSequence, ArmError,
+        core::armv8a_debug_regs::*, sequences::ArmDebugSequence, ArmError, ArmProbe,
     },
     core::{
         memory_mapped_registers::MemoryMappedRegister, CoreRegisters, RegisterId, RegisterValue,

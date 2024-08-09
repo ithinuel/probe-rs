@@ -16,8 +16,7 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        core::armv7a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
-        sequences::ArmDebugSequence, ArmError,
+        core::armv7a_debug_regs::*, sequences::ArmDebugSequence, ArmError, ArmProbe,
     },
     core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
     error::Error,

@@ -182,6 +182,10 @@ pub enum DebugProbeError {
 
     /// A timeout occurred during probe operation.
     Timeout,
+
+    /// This probe does not support APv2 (used as part of ADIv6).
+    #[display("APv2 not supported")]
+    APv2NotSupported,
 }
 
 /// An error during probe creation occurred.

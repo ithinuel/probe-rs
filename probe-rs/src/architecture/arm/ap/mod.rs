@@ -1,22 +1,82 @@
 //! Types and functions for interacting with access ports.
 
-#[macro_use]
+use crate::{
+    architecture::arm::{
+        communication_interface::RegisterParseError, dp::DebugPortError, ApAddress, ArmError,
+        DapAccess, Register,
+    },
+    probe::DebugProbeError,
+};
+
+use super::ApPort;
+
 pub mod register_generation;
-pub(crate) mod generic_ap;
-pub(crate) mod memory_ap;
 
-use crate::architecture::arm::dp::DebugPortError;
-use crate::probe::DebugProbeError;
+pub mod v1;
+pub mod v2;
 
-pub use generic_ap::{ApClass, ApType, GenericAp, IDR};
-pub use memory_ap::{
-    AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CFG, CSW, DRW, TAR, TAR2,
-};
+/// Access port IDR register
+#[derive(Clone, Debug)]
+pub enum ApIDR {
+    /// APv1 IDR register
+    APv1(v1::IDR),
+    /// APv2 IDR register
+    APv2(v2::IDR),
+}
 
-use super::{
-    communication_interface::RegisterParseError, ApAddress, ArmError, DapAccess, DpAddress,
-    Register,
-};
+crate::define_ap!(
+    /// A generic access port which implements just the register every access port has to implement
+    /// to be compliant with the ADI 5.2 specification.
+    GenericAp
+);
+
+crate::define_ap!(
+    /// Memory AP
+    ///
+    /// The memory AP can be used to access a memory-mapped
+    /// set of debug resources of the attached system.
+    MemoryAp
+);
+
+impl MemoryAp {
+    /// The base address of this AP which is used to then access all relative control registers.
+    pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, ArmError>
+    where
+        A: ApAccess,
+    {
+        Ok(match self.address.ap {
+            ApPort::Index(_) => {
+                let base_register: v1::BASE = interface.read_ap_register(*self)?;
+                let base_address = if v1::BaseaddrFormat::ADIv5 == base_register.Format {
+                    let base2: v1::BASE2 = interface.read_ap_register(*self)?;
+                    u64::from(base2.BASEADDR) << 32
+                } else {
+                    0
+                };
+                base_address | u64::from(base_register.BASEADDR << 12)
+            }
+
+            ApPort::Address(_) => {
+                let base_register: v2::BASE = interface.read_ap_register(*self)?;
+                let base_address = if v2::BaseaddrFormat::ADIv6 == base_register.Format {
+                    let base2: v2::BASE2 = interface.read_ap_register(*self)?;
+                    u64::from(base2.BASEADDR) << 32
+                } else {
+                    0
+                };
+                base_address | (u64::from(base_register.BASEADDR) << 12)
+            }
+        })
+    }
+}
+
+impl From<GenericAp> for MemoryAp {
+    fn from(other: GenericAp) -> Self {
+        MemoryAp {
+            address: other.ap_address(),
+        }
+    }
+}
 
 /// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]
@@ -25,7 +85,7 @@ pub enum AccessPortError {
     #[error("Failed to read register {name} at address 0x{address:08x}")]
     RegisterRead {
         /// The address of the register.
-        address: u8,
+        address: u16,
         /// The name if the register.
         name: &'static str,
         /// The underlying root error of this access error.
@@ -36,7 +96,7 @@ pub enum AccessPortError {
     #[error("Failed to write register {name} at address 0x{address:08x}")]
     RegisterWrite {
         /// The address of the register.
-        address: u8,
+        address: u16,
         /// The name if the register.
         name: &'static str,
         /// The underlying root error of this access error.
@@ -136,7 +196,7 @@ pub trait ApAccess {
 }
 
 impl<T: DapAccess> ApAccess for T {
-    #[tracing::instrument(skip(self, port), fields(ap = port.ap_address().ap, register = R::NAME, value))]
+    #[tracing::instrument(skip(self, port), fields(ap = ?port.ap_address().ap, register = R::NAME, value))]
     fn read_ap_register<PORT, R>(&mut self, port: PORT) -> Result<R, ArmError>
     where
         PORT: AccessPort,
@@ -200,65 +260,4 @@ impl<T: DapAccess> ApAccess for T {
 
         self.read_raw_ap_register_repeated(port.into().ap_address(), R::ADDRESS, values)
     }
-}
-
-/// Determine if an AP exists with the given AP number.
-///
-/// The test is performed by reading the IDR register, and checking if the register is non-zero.
-///
-/// Can fail silently under the hood testing an ap that doesn't exist and would require cleanup.
-pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> bool
-where
-    AP: ApAccess,
-{
-    let idr_result: Result<IDR, _> = debug_port.read_ap_register(access_port);
-
-    match idr_result {
-        Ok(idr) => {
-            let is_valid = u32::from(idr) != 0;
-
-            if !is_valid {
-                tracing::debug!("AP {} is not valid, IDR = 0", access_port.ap_address().ap);
-            }
-            is_valid
-        }
-        Err(e) => {
-            tracing::debug!(
-                "Error reading IDR register from AP {}: {}",
-                access_port.ap_address().ap,
-                e
-            );
-            false
-        }
-    }
-}
-
-/// Return a Vec of all valid access ports found that the target connected to the debug_probe.
-/// Can fail silently under the hood testing an ap that doesn't exist and would require cleanup.
-#[tracing::instrument(skip(debug_port))]
-pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP, dp: DpAddress) -> Vec<GenericAp>
-where
-    AP: ApAccess,
-{
-    (0..=255)
-        .map(|ap| GenericAp::new(ApAddress { dp, ap }))
-        .take_while(|port| access_port_is_valid(debug_port, *port))
-        .collect::<Vec<GenericAp>>()
-}
-
-/// Tries to find the first AP with the given idr value, returns `None` if there isn't any
-pub fn get_ap_by_idr<AP, P>(debug_port: &mut AP, dp: DpAddress, f: P) -> Option<GenericAp>
-where
-    AP: ApAccess,
-    P: Fn(IDR) -> bool,
-{
-    (0..=255)
-        .map(|ap| GenericAp::new(ApAddress { dp, ap }))
-        .find(|ap| {
-            if let Ok(idr) = debug_port.read_ap_register(*ap) {
-                f(idr)
-            } else {
-                false
-            }
-        })
 }

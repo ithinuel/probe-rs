@@ -5,7 +5,7 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap::{GenericAp, MemoryAp},
+            ap::{AccessPort, GenericAp, MemoryAp},
             armv6m::Demcr,
             component::Scs,
             dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
@@ -287,18 +287,10 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
     }
 
     let mut tree = Tree::new(dp_node);
+    let mut num_access_ports = 0;
 
-    let num_access_ports = interface.num_access_ports(dp)?;
-
-    for ap_index in 0..num_access_ports {
-        let ap = ApAddress {
-            ap: ap_index as u8,
-            dp,
-        };
-        let access_port = GenericAp::new(ap);
-
-        let ap_information = interface.ap_information(access_port)?;
-
+    for ap_information in interface.access_ports(dp)? {
+        num_access_ports += 1;
         match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {
                 debug_base_address,
@@ -306,10 +298,11 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
                 device_enabled,
                 ..
             }) => {
-                let mut ap_nodes = Tree::new(format!("{} MemoryAP", address.ap));
+                let access_port = GenericAp::new(address);
+                let mut ap_nodes = Tree::new(format!("{:?} MemoryAP", address.ap));
 
-                if *device_enabled {
-                    match handle_memory_ap(access_port.into(), *debug_base_address, interface) {
+                if device_enabled {
+                    match handle_memory_ap(access_port.into(), debug_base_address, interface) {
                         Ok(component_tree) => ap_nodes.push(component_tree),
                         Err(e) => ap_nodes.push(format!("Error during access: {e}")),
                     };
@@ -319,18 +312,31 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 
                 tree.push(ap_nodes);
             }
+            ApInformation::ADIv6RootAP(base_addr) => {
+                let mem_ap = MemoryAp::new(ApAddress::apv2_with_dp(dp, base_addr));
 
-            ApInformation::Other { address, idr } => {
-                let jep = idr.DESIGNER;
-
-                let ap_type = if idr.DESIGNER == JEP_ARM {
-                    format!("{:?}", idr.TYPE)
-                } else {
-                    format!("{:#x}", idr.TYPE as u8)
+                let component = {
+                    let mut memory = interface.memory_interface(mem_ap)?;
+                    Component::try_parse(&mut *memory, 0)?
                 };
 
-                tree.push(format!(
-                    "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
+                let component_tree = coresight_component_tree(interface, component, mem_ap)?;
+                tree.push(component_tree);
+            }
+
+            ApInformation::Other { address, idr } => match idr {
+                probe_rs::architecture::arm::ap::ApIDR::APv1(idr) => {
+                    let jep = idr.DESIGNER;
+
+                    let jep_arm = JEP106Code::new(4, 0x3b);
+                    let ap_type = if idr.DESIGNER == jep_arm {
+                        format!("{:?}", idr.TYPE)
+                    } else {
+                        format!("{:#x}", idr.TYPE as u8)
+                    };
+
+                    tree.push(format!(
+                    "{:?} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
                     address.ap,
                     jep.get().unwrap_or("<unknown>"),
                     idr.CLASS,
@@ -338,7 +344,9 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
                     idr.VARIANT,
                     idr.REVISION
                 ));
-            }
+                }
+                probe_rs::architecture::arm::ap::ApIDR::APv2(_) => todo!(),
+            },
         }
     }
 
@@ -377,8 +385,8 @@ fn coresight_component_tree(
 ) -> Result<Tree<String>> {
     let tree = match &component {
         Component::GenericVerificationComponent(_) => Tree::new("Generic".to_string()),
-        Component::Class1RomTable(_, table) => {
-            let mut rom_table = Tree::new("ROM Table (Class 1)".to_string());
+        Component::Class1RomTable(c, table) | Component::Class9RomTable(c, table) => {
+            let mut rom_table = Tree::new(format!("ROM Table (Class {})", c.class() as u8));
 
             for entry in table.entries() {
                 let component = entry.component().clone();
@@ -406,7 +414,22 @@ fn coresight_component_tree(
                 )
             };
 
-            Tree::new(component_description)
+            let mut tree = Tree::new(component_description);
+
+            //if peripheral_id.is_of_type(PeripheralType::Ap) {
+            //    let address = id.component_address();
+            //    let component_tree = coresight_component_tree(
+            //        interface,
+            //        component,
+            //        MemoryAp::new(ApAddress {
+            //            dp: access_port.ap_address().dp,
+            //            ap: ApPort::Address(address),
+            //        }),
+            //    )?;
+            //    tree.push(component_tree);
+            //}
+
+            tree
         }
 
         Component::PeripheralTestBlock(_) => Tree::new("Peripheral test block".to_string()),

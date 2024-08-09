@@ -114,9 +114,8 @@ impl Value for String {
         memory: &mut dyn MemoryInterface,
         variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        let mut str_value: String = "".to_owned();
         let children: Vec<_> = variable_cache.get_children(variable.variable_key).collect();
-        if !children.is_empty() {
+        Ok(if !children.is_empty() {
             let mut string_length = match children.iter().find(|child_variable| {
                     matches!(child_variable.name, VariableName::Named(ref name) if name == "length")
                 }) {
@@ -145,7 +144,10 @@ impl Value for String {
                     None => 0_u64,
                 };
             if string_location == 0 {
-                str_value = "Error: Failed to determine &str memory location".to_string();
+                "Error: Failed to determine &str memory location".to_string()
+            } else if string_length == 0 {
+                // A string with length 0 doesn't need to be read from memory.
+                "".to_owned()
             } else {
                 // Limit string length to work around buggy information, otherwise the debugger
                 // can hang due to buggy debug information.
@@ -160,18 +162,13 @@ impl Value for String {
                     string_length = 200;
                 }
 
-                if string_length == 0 {
-                    // A string with length 0 doesn't need to be read from memory.
-                } else {
-                    let mut buff = vec![0u8; string_length];
-                    memory.read(string_location, &mut buff)?;
-                    str_value = core::str::from_utf8(&buff)?.to_owned();
-                }
+                let mut buff = vec![0u8; string_length];
+                memory.read(string_location, &mut buff)?;
+                core::str::from_utf8(&buff)?.to_owned()
             }
         } else {
-            str_value = "Error: Failed to evaluate &str value".to_string();
-        }
-        Ok(str_value)
+            "Error: Failed to evaluate &str value".to_string()
+        })
     }
 
     fn update_value(

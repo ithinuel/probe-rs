@@ -25,13 +25,13 @@ use crate::architecture::{
     arm::{
         ap::MemoryAp,
         sequences::{ArmDebugSequence, DefaultArmSequence},
-        ApAddress, DpAddress,
+        ApAddress, ApPort, DpAddress,
     },
     riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
     xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
 };
 use crate::flashing::FlashLoader;
-use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, Jtag, MemoryRange};
+use probe_rs_target::{ApVersion, Architecture, BinaryFormat, ChipFamily, Jtag, MemoryRange};
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -369,7 +369,10 @@ impl CoreExt for Core {
                     0 => DpAddress::Default,
                     x => DpAddress::Multidrop(x),
                 },
-                ap: options.ap,
+                ap: match options.ap_version {
+                    Some(ApVersion::APv2) => ApPort::Address(options.ap),
+                    Some(ApVersion::APv1) | None => ApPort::Index(options.ap as u8),
+                },
             })),
             probe_rs_target::CoreAccessOptions::Riscv(_) => None,
             probe_rs_target::CoreAccessOptions::Xtensa(_) => None,

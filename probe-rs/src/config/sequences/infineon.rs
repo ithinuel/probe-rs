@@ -1,9 +1,9 @@
 //! Sequences for Infineon target families
 
 use crate::architecture::arm::armv7m::{Aircr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX};
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::ArmError;
+use crate::architecture::arm::ArmProbe;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;

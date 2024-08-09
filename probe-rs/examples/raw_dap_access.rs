@@ -1,6 +1,6 @@
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::{sequences::DefaultArmSequence, ApAddress, DpAddress},
+    architecture::arm::{sequences::DefaultArmSequence, ApAddress, ApPort, DpAddress},
     probe::list::Lister,
 };
 
@@ -27,12 +27,12 @@ fn main() -> Result<()> {
 
     let port = ApAddress {
         dp: DpAddress::Default,
-        ap: 1,
+        ap: ApPort::Index(1),
     };
 
-    const RESET: u8 = 0;
-    const ERASEALL: u8 = 4;
-    const ERASEALLSTATUS: u8 = 8;
+    const RESET: u16 = 0;
+    const ERASEALL: u16 = 4;
+    const ERASEALLSTATUS: u16 = 8;
 
     // Reset
     iface.write_raw_ap_register(port, RESET, 1)?;

@@ -1,18 +1,24 @@
-use super::super::{ApAccess, Register};
-use super::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR};
-use crate::architecture::arm::communication_interface::FlushableArmAccess;
-use crate::architecture::arm::{
-    ap::AccessPort,
-    dp::{DpAccess, DpRegister},
-    ArmError, DpAddress,
+use crate::{
+    architecture::arm::{
+        ap::{
+            v1::{
+                memory_ap::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR},
+                ApAccess,
+            },
+            AccessPort,
+        },
+        communication_interface::{FlushableArmAccess, Register},
+        dp::{DpAccess, DpRegister},
+        ArmError, DpAddress,
+    },
+    probe::DebugProbeError,
 };
-use crate::probe::DebugProbeError;
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct MockMemoryAp {
     pub memory: Vec<u8>,
-    store: HashMap<u8, u32>,
+    store: HashMap<u16, u32>,
 }
 
 impl MockMemoryAp {
