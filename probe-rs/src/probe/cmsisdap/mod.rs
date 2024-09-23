@@ -441,7 +441,7 @@ impl CmsisDap {
     /// and not retry any transfers.
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
         let response =
-            commands::send_command(&mut self.device, TransferRequest::read(Ctrl::ADDRESS))
+            commands::send_command(&mut self.device, &TransferRequest::read(Ctrl::ADDRESS))
                 .map_err(CmsisDapError::from)
                 .map_err(DebugProbeError::from)?;
 
@@ -476,7 +476,7 @@ impl CmsisDap {
     fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
         let response = commands::send_command(
             &mut self.device,
-            TransferRequest::write(Abort::ADDRESS, abort.into()),
+            &TransferRequest::write(Abort::ADDRESS, abort.into()),
         )
         .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
@@ -1003,14 +1003,9 @@ impl RawDapAccess for CmsisDap {
                 .map_err(DebugProbeError::from)?;
 
             if resp.transfer_response != 1 {
-                return Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
-                    RequestError::BlockTransfer {
-                        dap_index: request.dap_index,
-                        transfer_count: request.transfer_count,
-                        transfer_request: request.transfer_request,
-                    },
-                ))
-                .into());
+                return Err(
+                    DebugProbeError::from(CmsisDapError::ErrorResponse(request.into())).into(),
+                );
             }
         }
 
@@ -1043,14 +1038,9 @@ impl RawDapAccess for CmsisDap {
                 .map_err(DebugProbeError::from)?;
 
             if resp.transfer_response != 1 {
-                return Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
-                    RequestError::BlockTransfer {
-                        dap_index: request.dap_index,
-                        transfer_count: request.transfer_count,
-                        transfer_request: request.transfer_request,
-                    },
-                ))
-                .into());
+                return Err(
+                    DebugProbeError::from(CmsisDapError::ErrorResponse(request.into())).into(),
+                );
             }
 
             chunk.clone_from_slice(&resp.transfer_data[..]);
