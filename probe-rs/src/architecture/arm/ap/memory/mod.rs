@@ -19,8 +19,6 @@ use registers::{AddressIncrement, BaseAddrFormat, BASE, BASE2, DRW, TAR, TAR2};
 use super::v1::{AccessPortError, AccessPortType, ApAccess, ApRegAccess, Register};
 use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
 
-pub use super::v1::MemoryApType;
-
 /// Implements all default registers of a memory AP to the given type.
 ///
 /// Invoke in the form `attached_regs_to_mem_ap!(mod_name => ApName)` where:
@@ -120,7 +118,7 @@ impl AccessPortType for MemoryAp {
     }
 }
 
-impl MemoryApType for MemoryAp {
+impl super::v1::MemoryApType for MemoryAp {
     type CSW = registers::CSW;
 
     fn has_large_address_extension(&self) -> bool {
