@@ -34,17 +34,17 @@ impl PortAddress {
         }
     }
 
-    /// returns A[3:2] of the address
+    /// returns `A[3:2]` of the address
     pub fn a2_and_3(&self) -> u8 {
         self.lsb() & A2AND3_MASK
     }
 
-    /// Returns A[2] of the address
+    /// Returns `A[2]` of the address
     pub fn a2(&self) -> bool {
         (self.lsb() & A2_MASK) == A2_MASK
     }
 
-    /// Returns A[3] of the address
+    /// Returns `A[3]` of the address
     pub fn a3(&self) -> bool {
         (self.lsb() & A3_MASK) == A3_MASK
     }
@@ -108,6 +108,10 @@ impl ApV2Address {
         new
     }
 
+    /// Returns this AP v2 address as a slice.
+    ///
+    /// The first element is the position in the Debug Port’s memory space.
+    /// If the slice is empty, then this is the Debug Port itself.
     pub fn as_slice(&self) -> &[u64] {
         self.0.as_slice()
     }
@@ -199,6 +203,7 @@ impl FullyQualifiedApAddress {
         }
     }
 
+    /// Consumes the `FullyQualifiedApAddress` and returns its components.
     pub fn deconstruct(self) -> (DpAddress, ApAddress) {
         (self.dp, self.ap)
     }

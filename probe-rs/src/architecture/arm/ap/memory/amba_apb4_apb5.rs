@@ -1,5 +1,8 @@
 use crate::architecture::arm::{
-    ap_v1::{AccessPortType, ApAccess, ApRegAccess, Register},
+    ap::{
+        v1::{AccessPortType, ApAccess, ApRegAccess, MemoryApType},
+        ApRegAddressT, ApRegisterAccessT, RegisterT,
+    },
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 
@@ -38,7 +41,7 @@ impl AmbaApb4Apb5 {
     }
 }
 
-impl super::MemoryApType for AmbaApb4Apb5 {
+impl MemoryApType for AmbaApb4Apb5 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
@@ -73,6 +76,38 @@ impl super::MemoryApType for AmbaApb4Apb5 {
     }
 }
 
+impl<A: ApRegAddressT> super::MemoryApDataSizeAndIncrementT<A> for AmbaApb4Apb5
+where
+    CSW: RegisterT<A>,
+    Self: ApRegisterAccessT<CSW, A>,
+{
+    fn try_set_datasize_and_incr<I: crate::architecture::arm::ap::ApAccessT<A>>(
+        &mut self,
+        interface: &mut I,
+        data_size: DataSize,
+        increment: AddressIncrement,
+    ) -> Result<(), ArmError> {
+        match (data_size, increment) {
+            (DataSize::U32, AddressIncrement::Packed) => Err(
+                ArmError::UnsupportedAddressIncrement(AddressIncrement::Packed),
+            ),
+            (DataSize::U32, incr) if incr == self.csw.AddrInc => Ok(()),
+            (DataSize::U32, incr) => {
+                let csw = CSW {
+                    AddrInc: incr,
+                    ..self.csw
+                };
+                interface.write_register(self, csw)?;
+                self.csw = csw;
+                Ok(())
+            }
+            (_, _) => Err(ArmError::UnsupportedTransferWidth(
+                data_size.to_byte_count() * 8,
+            )),
+        }
+    }
+}
+
 impl AccessPortType for AmbaApb4Apb5 {
     fn ap_address(&self) -> &FullyQualifiedApAddress {
         &self.address
@@ -89,7 +124,7 @@ define_ap_register!(
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
     name: CSW,
-    address: 0x00,
+    address_v1: 0x00,
     fields: [
         /// Is debug software access enabled.
         DbgSwEnable: bool,          // [31]

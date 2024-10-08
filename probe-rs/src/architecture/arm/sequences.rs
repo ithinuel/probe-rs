@@ -20,7 +20,7 @@ use crate::{
 };
 
 use super::{
-    ap_v1::AccessPortError,
+    ap::v1::AccessPortError,
     armv6m::Demcr,
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},
@@ -476,7 +476,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         let has_dormant = matches!(dp, DpAddress::Multidrop(_));
 
         fn alert_sequence(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
-            tracing::trace!("Sending SelectV1ion Alert sequence");
+            tracing::trace!("Sending Selection Alert sequence");
 
             // Ensure target is not in the middle of detecting a selection alert
             interface.swj_sequence(8, 0xFF)?;

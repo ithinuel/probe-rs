@@ -1,9 +1,15 @@
 use crate::architecture::arm::{
-    ap_v1::{AccessPortType, ApAccess, ApRegAccess, Register},
+    ap::{
+        v1::{AccessPortType, ApAccess, ApRegAccess, MemoryApType, Register},
+        ApRegAddressT, ApRegisterAccessT, RegisterT,
+    },
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 
-use super::{AddressIncrement, DataSize};
+use super::{
+    registers::{DRW, TAR, TAR2},
+    AddressIncrement, DataSize, MemApExtensionsT, MemoryApT,
+};
 
 /// Memory AP
 ///
@@ -22,8 +28,9 @@ impl AmbaAxi5 {
         probe: &mut P,
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
-        let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
-        let cfg = probe.read_raw_ap_register(&address, super::registers::CFG::ADDRESS)?;
+        let csw = probe.read_raw_ap_register(&address, <CSW as Register>::ADDRESS)?;
+        let cfg =
+            probe.read_raw_ap_register(&address, <super::registers::CFG as Register>::ADDRESS)?;
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
 
         let me = Self { address, csw, cfg };
@@ -38,12 +45,12 @@ impl AmbaAxi5 {
     }
 }
 
-impl super::MemoryApType for AmbaAxi5 {
+impl MemoryApType for AmbaAxi5 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
         #[allow(clippy::assertions_on_constants)]
-        const { assert!(super::registers::CSW::ADDRESS == CSW::ADDRESS) };
+        const { assert!(<super::registers::CSW as Register>::ADDRESS == <CSW as Register>::ADDRESS) };
         self.csw = probe.read_ap_register(self)?;
         Ok(self.csw)
     }
@@ -96,13 +103,35 @@ impl ApRegAccess<CSW> for AmbaAxi5 {}
 
 crate::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAxi5);
 
+impl MemApExtensionsT for AmbaAxi5 {
+    fn has_large_address_extension(&self) -> bool {
+        todo!()
+    }
+
+    fn has_large_data_extension(&self) -> bool {
+        todo!()
+    }
+
+    fn supports_packed_transfers(&self) -> bool {
+        todo!()
+    }
+}
+impl<A: ApRegAddressT> MemoryApT<A> for AmbaAxi5
+where
+    TAR: RegisterT<A>,
+    TAR2: RegisterT<A>,
+    DRW: RegisterT<A>,
+    Self: ApRegisterAccessT<TAR, A> + ApRegisterAccessT<TAR2, A> + ApRegisterAccessT<DRW, A>,
+{
+}
+
 define_ap_register!(
     /// Control and Status Word register
     ///
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
     name: CSW,
-    address: 0x00,
+    address_v1: 0x00,
     fields: [
         /// Is debug software access enabled.
         DbgSwEnable: bool,          // [31]

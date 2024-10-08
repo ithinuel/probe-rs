@@ -1,7 +1,6 @@
 //! All the interface bits for ARM.
 
-pub mod ap_v1;
-pub mod ap_v2;
+pub mod ap;
 pub(crate) mod communication_interface;
 pub mod component;
 pub(crate) mod core;
@@ -13,7 +12,7 @@ mod traits;
 
 pub use self::core::{armv6m, armv7a, armv7m, armv8a, armv8m, Dump};
 use self::{
-    ap_v1::AccessPortError,
+    ap::v1::AccessPortError,
     dp::DebugPortError,
     memory::romtable::RomTableError,
     sequences::ArmDebugSequenceError,
@@ -24,6 +23,7 @@ use crate::{
     memory::{InvalidDataLengthError, MemoryNotAlignedError},
     probe::DebugProbeError,
 };
+use ap::memory::registers::AddressIncrement;
 pub use communication_interface::{
     ArmChipInfo, ArmCommunicationInterface, ArmProbeInterface, DapError,
 };
@@ -99,8 +99,11 @@ pub enum ArmError {
     /// A region outside of the AP address space was accessed.
     OutOfBounds,
 
-    /// {0} bit is not a supported memory transfer width on the current core.
+    /// {0} bit is not a supported memory transfer width on this Memory Access Port.
     UnsupportedTransferWidth(usize),
+
+    /// {0:?} increment is not supported by this memory AP.
+    UnsupportedAddressIncrement(AddressIncrement),
 
     /// The AP with address {0:?} does not exist.
     ApDoesNotExist(FullyQualifiedApAddress),

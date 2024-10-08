@@ -2,12 +2,12 @@ use std::any::Any;
 
 use crate::{
     architecture::arm::{
-        ap_v1::{
-            memory_ap::{DataSize, MemoryAp, MemoryApType},
-            AccessPortType, ApAccess,
+        ap::{
+            memory::{DataSize, MemoryAp, MemoryApDataSizeAndIncrementT},
+            v1::{AccessPortError, AccessPortType, MemoryApType, RegAddr},
+            ApRegisterAccessT, RegisterT,
         },
         communication_interface::{FlushableArmAccess, Initialized, SwdSequence},
-        dp::DpAccess,
         memory::ArmMemoryInterface,
         ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress,
     },
@@ -26,12 +26,13 @@ fn autoincr_max_bytes(address: u64) -> usize {
 /// A struct to give access to a targets memory using a certain DAP.
 pub(crate) struct ADIMemoryInterface<'interface, APA> {
     interface: &'interface mut APA,
+    address: FullyQualifiedApAddress,
     memory_ap: MemoryAp,
 }
 
 impl<'interface, APA> ADIMemoryInterface<'interface, APA>
 where
-    APA: ApAccess + DapAccess,
+    APA: DapAccess,
 {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
@@ -41,12 +42,11 @@ where
         let memory_ap = MemoryAp::new(interface, access_port_address)?;
         Ok(Self {
             interface,
+            address: access_port_address.clone(),
             memory_ap,
         })
     }
 }
-
-impl<APA> ADIMemoryInterface<'_, APA> where APA: ApAccess {}
 
 impl<APA> SwdSequence for ADIMemoryInterface<'_, APA>
 where
@@ -70,7 +70,7 @@ where
 
 impl<AP> MemoryInterface<ArmError> for ADIMemoryInterface<'_, AP>
 where
-    AP: FlushableArmAccess + ApAccess + DpAccess,
+    AP: FlushableArmAccess + DapAccess,
 {
     /// Read a block of 64 bit words at `address`.
     ///
@@ -173,10 +173,6 @@ where
     /// The address where the read should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     fn read_16(&mut self, mut address: u64, mut data: &mut [u16]) -> Result<(), ArmError> {
-        if self.memory_ap.supports_only_32bit_data_size() {
-            return Err(ArmError::UnsupportedTransferWidth(16));
-        }
-
         if (address % 2) != 0 {
             return Err(ArmError::alignment_error(address, 2));
         }
@@ -532,7 +528,7 @@ where
 
 impl<APA> ArmMemoryInterface for ADIMemoryInterface<'_, APA>
 where
-    APA: std::any::Any + FlushableArmAccess + ApAccess + DpAccess,
+    APA: std::any::Any + FlushableArmAccess + DapAccess,
 {
     fn base_address(&mut self) -> Result<u64, ArmError> {
         self.memory_ap.base_address(self.interface)
@@ -564,6 +560,35 @@ where
     }
 }
 
+impl<APA> crate::architecture::arm::ap::ApAccessT<RegAddr> for ADIMemoryInterface<'_, APA>
+where
+    APA: std::any::Any + FlushableArmAccess + DapAccess,
+{
+    fn read_register<R, ARA>(&mut self, _ap: &ARA) -> Result<R, ArmError>
+    where
+        R: RegisterT<RegAddr>,
+        ARA: ApRegisterAccessT<R, RegAddr> + ?Sized,
+    {
+        self.interface
+            .read_raw_ap_register(&self.address, R::ADDRESS.0)?
+            .try_into()
+            .map_err(ArmError::RegisterParse)
+            .map_err(AccessPortError::register_read_error::<RegAddr, R, _>)
+            .map_err(|err| ArmError::from_access_port(err, &self.address))
+    }
+
+    fn write_register<R, ARA>(&mut self, _ap: &ARA, value: R) -> Result<(), ArmError>
+    where
+        R: RegisterT<RegAddr>,
+        ARA: ApRegisterAccessT<R, RegAddr> + ?Sized,
+    {
+        self.interface
+            .write_raw_ap_register(&self.address, R::ADDRESS.0, value.into())
+            .map_err(AccessPortError::register_write_error::<RegAddr, R, _>)
+            .map_err(|e| ArmError::from_access_port(e, &self.address))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use scroll::Pread;
@@ -571,8 +596,8 @@ mod tests {
 
     use crate::{
         architecture::arm::{
-            ap_v1::memory_ap::mock::MockMemoryAp,
-            memory::adi_v5_memory_interface::ADIMemoryInterface, FullyQualifiedApAddress,
+            ap::memory::mock::MockMemoryAp, memory::adi_v5_memory_interface::ADIMemoryInterface,
+            FullyQualifiedApAddress,
         },
         MemoryInterface,
     };

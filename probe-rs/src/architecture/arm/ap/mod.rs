@@ -1,6 +1,47 @@
-//! Generic access port
+//! Types and functions for interacting with the first version of access ports.
+
+#[macro_use]
+pub mod register_generation;
+pub(crate) mod memory;
+
+pub mod v1;
+pub mod v2;
 
 use crate::architecture::arm::RegisterParseError;
+
+use super::{ArmError, FullyQualifiedApAddress};
+
+/// A trait to be implemented on Access Port’s register address types.
+pub trait ApRegAddressT: Into<u16> {
+    /// The concrete type of the address.
+    type Address;
+}
+
+/// A trait to be implemented on Access Port register types for typed device access.
+pub trait RegisterT<A: ApRegAddressT>: Into<u32> + TryFrom<u32, Error = RegisterParseError> + std::fmt::Debug {
+    /// The name of the register as a string.
+    const NAME: &'static str;
+    /// The address of the register.
+    const ADDRESS: A;
+}
+
+/// A trait marking the bound between an Access Port and a Register.
+pub trait ApRegisterAccessT<R: RegisterT<A>, A: ApRegAddressT> {}
+
+/// A trait to implement on interfaces providing access to Access Port.
+pub trait ApAccessT<A: ApRegAddressT> {
+    /// Read the named register from this Access port.
+    fn read_register<R, ARA>(&mut self, ap: &ARA) -> Result<R, ArmError>
+    where
+        R: RegisterT<A>,
+        ARA: ApRegisterAccessT<R, A> + ?Sized;
+
+    /// Read the named register from this Access port.
+    fn write_register<R, ARA>(&mut self, ap: &ARA, value: R) -> Result<(), ArmError>
+    where
+        R: RegisterT<A>,
+        ARA: ApRegisterAccessT<R, A> + ?Sized;
+}
 
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -76,7 +117,8 @@ define_ap_register!(
     ///
     /// It has to be present on every AP.
     name: IDR,
-    address: 0x0FC,
+    address_v1: 0xFC,
+    address_v2: 0xDFC,
     fields: [
         /// The revision of this access point.
         REVISION: u8,
@@ -111,3 +153,23 @@ define_ap_register!(
         | (u32::from(value.VARIANT) << 4)
         | (value.TYPE as u32)
 );
+
+/// A generic access port which implements just the register every access port has to implement
+/// to be compliant with the ADI 5.2 specification.
+#[derive(Clone, Debug)]
+pub struct GenericAp(FullyQualifiedApAddress);
+
+impl GenericAp {
+    /// Creates a new GenericAp with `address` as base address.
+    pub const fn new(fqaa: FullyQualifiedApAddress) -> Self {
+        Self(fqaa)
+    }
+}
+impl ApRegisterAccessT<IDR, v1::RegAddr> for GenericAp {}
+impl v1::AccessPortType for GenericAp {
+    fn ap_address(&self) -> &FullyQualifiedApAddress {
+        &self.0
+    }
+}
+impl v1::ApRegAccess<IDR> for GenericAp {}
+

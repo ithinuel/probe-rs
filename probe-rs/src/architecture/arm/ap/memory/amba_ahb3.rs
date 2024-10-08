@@ -1,5 +1,8 @@
 use crate::architecture::arm::{
-    ap_v1::{AccessPortType, ApAccess, ApRegAccess, Register},
+    ap::{
+        v1::{AccessPortType, ApAccess, ApRegAccess, MemoryApType, Register},
+        ApRegAddressT, ApRegisterAccessT, RegisterT,
+    },
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 
@@ -22,8 +25,10 @@ impl AmbaAhb3 {
         probe: &mut P,
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
-        let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
-        let cfg = probe.read_raw_ap_register(&address, super::registers::CFG::ADDRESS)?;
+        use crate::architecture::arm::ap::v1::Register as V1Register;
+        let csw = probe.read_raw_ap_register(&address, <CSW as V1Register>::ADDRESS)?;
+        let cfg =
+            probe.read_raw_ap_register(&address, <super::registers::CFG as V1Register>::ADDRESS)?;
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
 
         let me = Self { address, csw, cfg };
@@ -41,12 +46,44 @@ impl AmbaAhb3 {
     }
 }
 
-impl super::MemoryApType for AmbaAhb3 {
+impl<A: ApRegAddressT> super::MemoryApDataSizeAndIncrementT<A> for AmbaAhb3
+where
+    CSW: RegisterT<A>,
+    Self: ApRegisterAccessT<CSW, A>,
+{
+    fn try_set_datasize_and_incr<I: crate::architecture::arm::ap::ApAccessT<A>>(
+        &mut self,
+        interface: &mut I,
+        data_size: DataSize,
+        increment: AddressIncrement,
+    ) -> Result<(), ArmError> {
+        match (data_size, increment) {
+            (DataSize::U32, AddressIncrement::Packed) => Err(
+                ArmError::UnsupportedAddressIncrement(AddressIncrement::Packed),
+            ),
+            (DataSize::U32, incr) if incr == self.csw.AddrInc => Ok(()),
+            (DataSize::U32, incr) => {
+                let csw = CSW {
+                    AddrInc: incr,
+                    ..self.csw
+                };
+                interface.write_register(self, csw)?;
+                self.csw = csw;
+                Ok(())
+            }
+            (_, _) => Err(ArmError::UnsupportedTransferWidth(
+                data_size.to_byte_count() * 8,
+            )),
+        }
+    }
+}
+
+impl MemoryApType for AmbaAhb3 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
         #[allow(clippy::assertions_on_constants)]
-        const { assert!(super::registers::CSW::ADDRESS == CSW::ADDRESS) };
+        const { assert!(<super::registers::CSW as Register>::ADDRESS == <CSW as Register>::ADDRESS) };
         self.csw = probe.read_ap_register(self)?;
         Ok(self.csw)
     }
@@ -105,7 +142,7 @@ define_ap_register!(
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
     name: CSW,
-    address: 0x00,
+    address_v1: 0x00,
     fields: [
         /// Is debug software access enabled.
         DbgSwEnable: bool,          // [31]

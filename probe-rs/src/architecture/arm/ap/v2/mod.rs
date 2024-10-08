@@ -1,21 +1,25 @@
+//! Types and functions for interacting with the second version of access ports.
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
-    architecture::arm::memory::{
-        romtable::{RomTable, CORESIGHT_ROM_TABLE_ARCHID},
-        Component, PeripheralType,
+    architecture::arm::{
+        memory::{
+            romtable::{RomTable, CORESIGHT_ROM_TABLE_ARCHID},
+            Component, PeripheralType,
+        },
+        RegisterParseError,
     },
     MemoryInterface,
 };
 
-use super::{
+use super::super::{
     communication_interface::{Initialized, SwdSequence},
     dp::DpAddress,
     memory::ArmMemoryInterface,
     ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
 };
 
-mod registers;
 mod traits;
 
 mod root_memory_interface;
@@ -23,6 +27,28 @@ use root_memory_interface::RootMemoryInterface;
 
 mod memory_access_port_interface;
 use memory_access_port_interface::MemoryAccessPortInterface;
+
+/// Ap V2 Register address in the AP block
+#[repr(transparent)]
+pub struct RegAddr(pub u16);
+impl super::ApRegAddressT for RegAddr {
+    type Address = u16;
+}
+impl From<RegAddr> for u16 {
+    fn from(value: RegAddr) -> u16 {
+        value.0
+    }
+}
+
+/// A trait to be implemented on Access Port register types for typed device access.
+pub trait Register:
+    Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + std::fmt::Debug
+{
+    /// The address of the register (in bytes).
+    const ADDRESS: u16;
+    /// The name of the register as string.
+    const NAME: &'static str;
+}
 
 enum MaybeOwned<'i> {
     Reference(&'i mut (dyn ArmMemoryInterface + 'i)),
@@ -68,7 +94,7 @@ impl<'iface> ArmMemoryInterface for MaybeOwned<'iface> {
     dispatch!(fully_qualified_address(&self,) -> FullyQualifiedApAddress);
     dispatch!(base_address(&mut self,) -> Result<u64, ArmError>);
     dispatch!(get_arm_communication_interface(&mut self,) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError>);
-    dispatch!(try_as_parts(&mut self,) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp), crate::probe::DebugProbeError>);
+    dispatch!(try_as_parts(&mut self,) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut crate::architecture::arm::ap::memory::MemoryAp), crate::probe::DebugProbeError>);
 }
 
 /// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.
