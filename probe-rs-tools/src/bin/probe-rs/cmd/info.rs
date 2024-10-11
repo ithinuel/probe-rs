@@ -583,6 +583,16 @@ fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
         extensions.push("DSP".to_owned());
     }
 
+    if cpuid.part_name() != "Cortex-M0" && cpuid.part_name() != "Cortex-M23" {
+        let mvfr0 = scs.mvfr0()?;
+        if mvfr0.fpsp() != 0 {
+            extensions.push("FVP_SP".to_owned());
+        }
+        if mvfr0.fpdp() != 0 {
+            extensions.push("FVP_DP".to_owned());
+        }
+    }
+
     // read MPU_TYPE
     // if !(v6 | v8base)
     //   read mvfr0 : check for fvp presence

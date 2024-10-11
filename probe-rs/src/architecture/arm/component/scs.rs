@@ -2,9 +2,10 @@
 //!
 //! SCS = System Control Space
 
+use gimli::Arm;
+use register::CPUID;
 use register::ISAR3;
-
-use self::register::CPUID;
+use register::MVFR0;
 
 use super::super::memory::romtable::CoresightComponent;
 use crate::{
@@ -37,6 +38,12 @@ impl<'a> Scs<'a> {
             .map(CPUID)
     }
 
+    pub fn mvfr0(&mut self) -> Result<MVFR0, ArmError> {
+        self.component
+            .read_reg(self.interface, MVFR0::ADDRESS_OFFSET as u32)
+            .map(MVFR0)
+    }
+
     pub fn isar3(&mut self) -> Result<ISAR3, ArmError> {
         self.component
             .read_reg(self.interface, ISAR3::ADDRESS_OFFSET as u32)
@@ -59,6 +66,19 @@ mod register {
         pub svc, _: 11, 8;
         pub simd, _: 7, 4;
         pub saturate, _: 3, 0;
+    }
+
+    memory_mapped_bitfield_register! {
+        /// D1.2.178 MVFR0, Media and VFP Feature Register 0 of the Armv8-m ARM
+        pub struct MVFR0(u32);
+        0xF40, "MVFR0",
+        impl From;
+        pub fp_round, _: 31, 28;
+        pub fp_sqrt, _: 23, 20;
+        pub fp_divide, _: 19, 16;
+        pub fpdp, _: 11, 8;
+        pub fpsp, _: 7, 4;
+        pub simd_reg, _: 3, 0;
     }
 
     memory_mapped_bitfield_register! {
