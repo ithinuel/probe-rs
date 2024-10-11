@@ -15,6 +15,7 @@ use super::{
 };
 
 /// Ap V1 Register address in the AP block
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct RegAddr(pub u8);
 impl super::ApRegAddressT for RegAddr {

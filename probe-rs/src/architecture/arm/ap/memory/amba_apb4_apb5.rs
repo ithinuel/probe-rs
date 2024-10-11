@@ -1,6 +1,6 @@
 use crate::architecture::arm::{
     ap::{
-        v1::{AccessPortType, ApAccess, ApRegAccess, MemoryApType},
+        v1::{AccessPortType, ApAccess, ApRegAccess, MemoryApType, RegAddr},
         ApRegAddressT, ApRegisterAccessT, RegisterT,
     },
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
@@ -25,8 +25,9 @@ impl AmbaApb4Apb5 {
         probe: &mut P,
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
-        let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
-        let cfg = probe.read_raw_ap_register(&address, super::registers::CFG::ADDRESS)?;
+        let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS.0)?;
+        let cfg =
+            probe.read_raw_ap_register(&address, <super::registers::CFG as RegisterT<crate::architecture::arm::ap::v1::RegAddr>>::ADDRESS.0)?;
 
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
 
@@ -46,7 +47,9 @@ impl MemoryApType for AmbaApb4Apb5 {
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
         #[allow(clippy::assertions_on_constants)]
-        const { assert!(super::registers::CSW::ADDRESS == CSW::ADDRESS) };
+        const {
+            assert!(<super::registers::CSW as RegisterT<crate::architecture::arm::ap::v1::RegAddr>>::ADDRESS.0 == CSW::ADDRESS.0)
+        };
         self.csw = probe.read_ap_register(self)?;
         Ok(self.csw)
     }

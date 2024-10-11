@@ -575,6 +575,24 @@ fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
     tree.push(format!("PARTNO: {}", cpuid.part_name()));
     tree.push(format!("REVISION: {}", cpuid.revision()));
 
+    let mut extensions = Tree::new("Extensions".into());
+    // read ISAR3: Instruction Set Attribute Register 3
+    // : check for simd extension
+    let isar3 = scs.isar3()?;
+    if isar3.simd() == 0x3 {
+        extensions.push("DSP".to_owned());
+    }
+
+    // read MPU_TYPE
+    // if !(v6 | v8base)
+    //   read mvfr0 : check for fvp presence
+    //   if single or double precision supported
+    //   read mvfr2 : check for fpu v4 vs v5
+    //
+    //
+
+    tree.push(extensions);
+
     Ok(tree)
 }
 

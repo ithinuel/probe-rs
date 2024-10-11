@@ -13,6 +13,13 @@ mod amba_ahb5_hprot;
 mod amba_axi3_axi4;
 mod amba_axi5;
 
+use amba_ahb3::AmbaAhb3;
+use amba_ahb5::AmbaAhb5;
+use amba_ahb5_hprot::AmbaAhb5Hprot;
+use amba_apb2_apb3::AmbaApb2Apb3;
+use amba_apb4_apb5::AmbaApb4Apb5;
+use amba_axi3_axi4::AmbaAxi3Axi4;
+use amba_axi5::AmbaAxi5;
 pub use registers::DataSize;
 use registers::{AddressIncrement, BASE, BASE2, DRW, TAR, TAR2};
 
@@ -222,7 +229,16 @@ pub(crate) trait MemoryApDataSizeAndIncrementT<A: ApRegAddressT> {
         increment: AddressIncrement,
     ) -> Result<(), ArmError>;
 }
-impl<A: ApRegAddressT> MemoryApDataSizeAndIncrementT<A> for MemoryAp {
+impl<A: ApRegAddressT> MemoryApDataSizeAndIncrementT<A> for MemoryAp
+where
+    AmbaApb2Apb3: MemoryApDataSizeAndIncrementT<A>,
+    AmbaApb4Apb5: MemoryApDataSizeAndIncrementT<A>,
+    AmbaAhb3: MemoryApDataSizeAndIncrementT<A>,
+    AmbaAhb5: MemoryApDataSizeAndIncrementT<A>,
+    AmbaAhb5Hprot: MemoryApDataSizeAndIncrementT<A>,
+    AmbaAxi3Axi4: MemoryApDataSizeAndIncrementT<A>,
+    AmbaAxi5: MemoryApDataSizeAndIncrementT<A>,
+{
     fn try_set_datasize_and_incr<I: ApAccessT<A>>(
         &mut self,
         interface: &mut I,

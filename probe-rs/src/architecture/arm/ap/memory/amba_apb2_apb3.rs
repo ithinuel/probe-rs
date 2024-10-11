@@ -53,6 +53,13 @@ define_ap_register!(
     | (value.Size as u32)
     | value._reserved_bits
 );
+impl From<CSW> for super::registers::CSW {
+    fn from(value: CSW) -> Self {
+        super::registers::CSW::try_from(u32::from(value))
+            .expect("AP specific CSW is compatible with AP generic CSW")
+    }
+}
+
 /// Memory AP
 ///
 /// The memory AP can be used to access a memory-mapped
@@ -88,6 +95,9 @@ impl AmbaApb2Apb3 {
 }
 
 crate::attached_regs_to_mem_ap!(memory_ap_regs => AmbaApb2Apb3);
+
+impl ApRegisterAccessT<CSW, crate::architecture::arm::ap::v1::RegAddr> for AmbaApb2Apb3 {}
+impl ApRegisterAccessT<CSW, crate::architecture::arm::ap::v2::RegAddr> for AmbaApb2Apb3 {}
 
 impl MemoryApType for AmbaApb2Apb3 {
     type CSW = CSW;
@@ -128,8 +138,8 @@ impl MemoryApType for AmbaApb2Apb3 {
 
 impl<A: ApRegAddressT> super::MemoryApDataSizeAndIncrementT<A> for AmbaApb2Apb3
 where
-    CSW: RegisterT<A>,
-    Self: ApRegisterAccessT<CSW, A>,
+    super::registers::CSW: RegisterT<A>,
+    Self: ApRegisterAccessT<super::registers::CSW, A>,
 {
     fn try_set_datasize_and_incr<I: crate::architecture::arm::ap::ApAccessT<A>>(
         &mut self,
@@ -147,7 +157,7 @@ where
                     AddrInc: incr,
                     ..self.csw
                 };
-                interface.write_register(self, csw)?;
+                interface.write_register(self, super::registers::CSW::from(csw))?;
                 self.csw = csw;
                 Ok(())
             }

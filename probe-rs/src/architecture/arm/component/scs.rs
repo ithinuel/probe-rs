@@ -2,6 +2,8 @@
 //!
 //! SCS = System Control Space
 
+use register::ISAR3;
+
 use self::register::CPUID;
 
 use super::super::memory::romtable::CoresightComponent;
@@ -34,10 +36,30 @@ impl<'a> Scs<'a> {
             .read_reg(self.interface, CPUID::ADDRESS_OFFSET as u32)
             .map(CPUID)
     }
+
+    pub fn isar3(&mut self) -> Result<ISAR3, ArmError> {
+        self.component
+            .read_reg(self.interface, ISAR3::ADDRESS_OFFSET as u32)
+            .map(ISAR3)
+    }
 }
 
 mod register {
     use crate::memory_mapped_bitfield_register;
+
+    memory_mapped_bitfield_register! {
+        /// D1.2.133 ID_ISAR3, Instruction Set Attribute Register 3 of the Armv8-m ARM
+        pub struct ISAR3(u32);
+        0xD6C, "ISAR3",
+        impl From;
+        pub true_nop, _: 27, 24;
+        pub t32_copy, _: 23, 20;
+        pub tab_branch, _: 19, 16;
+        pub synch_prim, _: 15, 12;
+        pub svc, _: 11, 8;
+        pub simd, _: 7, 4;
+        pub saturate, _: 3, 0;
+    }
 
     memory_mapped_bitfield_register! {
         /// B3.2.3 CPUID Base Register
