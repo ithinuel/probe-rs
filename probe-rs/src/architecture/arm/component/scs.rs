@@ -2,10 +2,7 @@
 //!
 //! SCS = System Control Space
 
-use gimli::Arm;
-use register::CPUID;
-use register::ISAR3;
-use register::MVFR0;
+use register::{CPUID, ISAR3, MVFR0, MVFR1};
 
 use super::super::memory::romtable::CoresightComponent;
 use crate::{
@@ -38,12 +35,21 @@ impl<'a> Scs<'a> {
             .map(CPUID)
     }
 
+    /// D1.2.178 MVFR0, Media and VFP Feature Register 0 of the Armv8-m ARM
     pub fn mvfr0(&mut self) -> Result<MVFR0, ArmError> {
         self.component
             .read_reg(self.interface, MVFR0::ADDRESS_OFFSET as u32)
             .map(MVFR0)
     }
 
+    /// D1.2.179 MVFR1, Media and VFP Feature Register 1 of the Armv8-m ARM
+    pub fn mvfr1(&mut self) -> Result<MVFR1, ArmError> {
+        self.component
+            .read_reg(self.interface, MVFR1::ADDRESS_OFFSET as u32)
+            .map(MVFR1)
+    }
+
+    /// D1.2.133 ID_ISAR3, Instruction Set Attribute Register 3 of the Armv8-m ARM
     pub fn isar3(&mut self) -> Result<ISAR3, ArmError> {
         self.component
             .read_reg(self.interface, ISAR3::ADDRESS_OFFSET as u32)
@@ -79,6 +85,19 @@ mod register {
         pub fpdp, _: 11, 8;
         pub fpsp, _: 7, 4;
         pub simd_reg, _: 3, 0;
+    }
+
+    memory_mapped_bitfield_register! {
+        /// D1.2.179 MVFR1, Media and VFP Feature Register 1 of the Armv8-m ARM
+        pub struct MVFR1(u32);
+        0xF44, "MVFR1",
+        impl From;
+        pub fmac, _: 31, 28;
+        pub fphp, _: 27, 24;
+        pub fp16, _: 23, 20;
+        pub mve, _: 11, 8;
+        pub fpdnan, _: 7, 4;
+        pub fpftz, _: 3, 0;
     }
 
     memory_mapped_bitfield_register! {
@@ -118,9 +137,9 @@ mod register {
                     0xD22 => String::from("Cortex-M55"),
                     0xD23 => String::from("Cortex-M85"),
                     0xD24 => String::from("Cortex-M52"),
-                    _ => format!("{:#x}", self.partno()),
+                    _ => format!("0x41-{:#x}", self.partno()),
                 },
-                _ => format!("{:#x}", self.partno()),
+                _ => format!("{:#x}-{:#x}", self.implementer(), self.partno()),
             }
         }
     }

@@ -583,13 +583,21 @@ fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
         extensions.push("DSP".to_owned());
     }
 
-    if cpuid.part_name() != "Cortex-M0" && cpuid.part_name() != "Cortex-M23" {
+    if ["Cortex-M0", "Cortex-M0+", "Cortex-M23"].contains(&cpuid.part_name().as_str()) {
         let mvfr0 = scs.mvfr0()?;
         if mvfr0.fpsp() != 0 {
-            extensions.push("FVP_SP".to_owned());
+            extensions.push("FPU_SP".to_owned());
         }
         if mvfr0.fpdp() != 0 {
-            extensions.push("FVP_DP".to_owned());
+            extensions.push("FPU_DP".to_owned());
+        }
+
+        let mvfr1 = scs.mvfr1()?;
+        if mvfr1.mve() != 0 {
+            extensions.push("MVE".to_owned());
+        }
+        if mvfr1.fp16() != 0 {
+            extensions.push("FPU_HP".to_owned());
         }
     }
 
